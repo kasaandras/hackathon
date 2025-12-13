@@ -8,8 +8,7 @@ with direct column names for duration and event.
 
 from src.survival_analysis import (
     train_survival_model, 
-    validate_survival_model,
-    calculate_survival_targets
+    validate_survival_model
 )
 from pathlib import Path
 import pandas as pd
@@ -33,6 +32,7 @@ def split_once(input_path: str, train_path: str, test_path: str, train_frac: flo
     Path(train_path).parent.mkdir(parents=True, exist_ok=True)
     df.iloc[:split_idx].to_csv(train_path, index=False)
     df.iloc[split_idx:].to_csv(test_path, index=False)
+
     return train_path, test_path
 
 
@@ -41,11 +41,11 @@ print("EXAMPLE 1: Training with existing duration and event columns")
 print("="*70)
 
 # Split once for Overall Survival (OS) dataset and reuse
-os_input = "survival_preprocessing_output/overall_survival_cleaned_survival_data_encoded.csv"
+os_input = "corrected_preprocessing_output/overall_survival_final_cleaned.csv"
 os_train_path, os_test_path = split_once(
     os_input,
-    "survival_preprocessing_output/os_train_split.csv",
-    "survival_preprocessing_output/os_test_split.csv",
+    "corrected_preprocessing_output/os_train_split.csv",
+    "corrected_preprocessing_output/os_test_split.csv",
 )
 
 # Train on the train split
@@ -104,11 +104,11 @@ print("EXAMPLE 2: Calculate survival targets from dates, then train")
 print("="*70)
 
 # Split once for Recurrence-Free Survival (RFS) dataset and reuse
-rfs_input = "survival_preprocessing_output/recurrence_free_survival_cleaned_survival_data_encoded.csv"
+rfs_input = "corrected_preprocessing_output/recurrence_free_survival_final_cleaned.csv"
 rfs_train_path, rfs_test_path = split_once(
     rfs_input,
-    "survival_preprocessing_output/rfs_train_split.csv",
-    "survival_preprocessing_output/rfs_test_split.csv",
+    "corrected_preprocessing_output/rfs_train_split.csv",
+    "corrected_preprocessing_output/rfs_test_split.csv",
 )
 
 results_train = train_survival_model(

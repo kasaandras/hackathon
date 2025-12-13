@@ -1,0 +1,9 @@
+variable,type,action,n_features,missing_pct
+pms2,binary,kept as 0/1,1,5.590062111801243
+p53_immunohistochemistry,binary,kept as 0/1,1,5.590062111801243
+final_grade,ordinal,label encoded (144 mapped),1,10.559006211180124
+tumor_size,continuous,kept as-is,1,18.633540372670808
+msh2,binary,kept as 0/1,1,4.3478260869565215
+total_sentinel_nodes,continuous,kept as-is,1,17.391304347826086
+indication_radiotherapy,binary,kept as 0/1,1,4.968944099378882
+final_risk_group,ordinal,label encoded (142 mapped),1,11.801242236024844

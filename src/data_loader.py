@@ -11,9 +11,7 @@ from typing import Optional, Tuple
 
 
 def load_excel_data(
-    file_path: str | Path,
-    sheet_name: Optional[str | int] = 0,
-    engine: Optional[str] = "openpyxl"
+    file_path: str | Path
 ) -> pd.DataFrame:
     """
     Load data from Excel file.
@@ -22,10 +20,6 @@ def load_excel_data(
     ----------
     file_path : str or Path
         Path to the Excel file
-    sheet_name : str or int, optional
-        Name or index of the sheet to load. Default is 0 (first sheet).
-    engine : str, optional
-        Excel engine to use. Defaults to "openpyxl" for .xlsx files.
     
     Returns
     -------

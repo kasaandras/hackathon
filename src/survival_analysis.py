@@ -185,7 +185,7 @@ def train_survival_model(
     # 1. Load data
     print("\n[1/3] Loading data...")
     df = load_excel_data(data_path)
-    
+
     # Check if required columns exist
     if duration_col not in df.columns:
         raise ValueError(f"Duration column '{duration_col}' not found in data")

@@ -1,0 +1,29 @@
+variable,type,action,n_features,missing_pct
+sentinel_node_pathology,nominal,one-hot encoded (4 features),4,18.633540372670808
+lymphovascular_invasion,binary,kept as 0/1,1,11.180124223602483
+asa_score,ordinal,label encoded (133 mapped),1,11.801242236024844
+final_histology,nominal,one-hot encoded (8 features),8,7.453416149068323
+chemotherapy,binary,kept as 0/1,1,6.211180124223603
+primary_surgery_type,nominal,one-hot encoded (1 features),1,2.484472049689441
+msh6,binary,kept as 0/1,1,4.3478260869565215
+neoadjuvant_treatment,binary,kept as 0/1,1,0.0
+affected_sentinel_nodes,continuous,kept as-is,1,19.25465838509317
+p53_molecular,binary,kept as 0/1,1,8.074534161490684
+estrogen_receptor_percentage,continuous,kept as-is,1,44.099378881987576
+myometrial_invasion_preop_objective,nominal,one-hot encoded (3 features),3,3.7267080745341614
+age_at_diagnosis,continuous,kept as-is,1,0.0
+blood_loss_cc,continuous,kept as-is,1,47.82608695652174
+myometrial_invasion,ordinal,label encoded (144 mapped),1,10.559006211180124
+brachytherapy,binary,kept as 0/1,1,5.590062111801243
+pole_mutation,binary,kept as 0/1,1,8.695652173913043
+hospital_stay_days,continuous,kept as-is,1,14.285714285714285
+distant_metastasis,binary,kept as 0/1,1,1.8633540372670807
+bmi,continuous,kept as-is,1,4.968944099378882
+tumor_grade_preop,ordinal,label encoded (161 mapped),1,0.0
+ca125_value,continuous,kept as-is,1,86.95652173913044
+myometrial_invasion_preop_subjective,nominal,one-hot encoded (3 features),3,0.6211180124223602
+surgery_time,continuous,kept as-is,1,15.527950310559005
+preoperative_staging,nominal,one-hot encoded (2 features),2,1.8633540372670807
+mlh1,binary,kept as 0/1,1,6.211180124223603
+preoperative_risk_group,ordinal,label encoded (159 mapped),1,1.2422360248447204
+progesterone_receptor_percentage,continuous,kept as-is,1,45.3416149068323
