@@ -159,8 +159,9 @@ try:
         os_features = os_model.feature_names
         rfs_features = rfs_model.feature_names
         
-        os_risk_scores = os_model.model.predict_partial_hazard(os_train_data[os_features]).values
-        rfs_risk_scores = rfs_model.model.predict_partial_hazard(rfs_train_data[rfs_features]).values
+        # Use model's predict_risk method to ensure scaling is applied if needed
+        os_risk_scores = os_model.predict_risk(os_train_data[os_features])
+        rfs_risk_scores = rfs_model.predict_risk(rfs_train_data[rfs_features])
         
         OS_RISK_QUANTILES = {
             'low': np.percentile(os_risk_scores, 33),
@@ -1192,12 +1193,12 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
         os_df = pd.DataFrame([os_features])
         os_df = os_df[os_model.feature_names]  # Ensure correct column order
         
-        # Calculate risk score
-        os_risk_score = os_model.model.predict_partial_hazard(os_df).values[0]
+        # Calculate risk score (using model method to ensure scaling is applied)
+        os_risk_score = os_model.predict_risk(os_df)[0]
         os_risk_cat, os_risk_color = get_risk_category(os_risk_score, OS_RISK_QUANTILES)
         
-        # Calculate survival function
-        os_surv_func = os_model.model.predict_survival_function(os_df)
+        # Calculate survival function (using model method to ensure scaling is applied)
+        os_surv_func = os_model.predict_survival_function(os_df)
         
         os_results = {
             'risk_score': os_risk_score,
@@ -1226,12 +1227,12 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
         rfs_df = pd.DataFrame([rfs_features])
         rfs_df = rfs_df[rfs_model.feature_names]  # Ensure correct column order
         
-        # Calculate risk score
-        rfs_risk_score = rfs_model.model.predict_partial_hazard(rfs_df).values[0]
+        # Calculate risk score (using model method to ensure scaling is applied)
+        rfs_risk_score = rfs_model.predict_risk(rfs_df)[0]
         rfs_risk_cat, rfs_risk_color = get_risk_category(rfs_risk_score, RFS_RISK_QUANTILES)
         
-        # Calculate survival function
-        rfs_surv_func = rfs_model.model.predict_survival_function(rfs_df)
+        # Calculate survival function (using model method to ensure scaling is applied)
+        rfs_surv_func = rfs_model.predict_survival_function(rfs_df)
         
         rfs_results = {
             'risk_score': rfs_risk_score,

@@ -23,6 +23,7 @@ def fit_cox_model(
     l1_ratio: float = 0.0,
     duration_col: str = "survival_time",
     event_col: str = "event",
+    standardize_features: bool = False,
     **kwargs
 ) -> Tuple[CoxPHModel, pd.DataFrame]:
     """
@@ -79,7 +80,8 @@ def fit_cox_model(
         event_col=event_col,
         feature_cols=feature_cols,
         penalizer=penalizer,
-        l1_ratio=l1_ratio
+        l1_ratio=l1_ratio,
+        standardize_features=standardize_features
     )
     
     print(f"\nModel fitted successfully!")
@@ -144,7 +146,8 @@ def train_survival_model(
     l1_ratio: float = 0.0,
     prediction_times: Optional[List[float]] = None,
     prediction_years: Optional[List[float]] = None,
-    save_model: Optional[str | Path] = None
+    save_model: Optional[str | Path] = None,
+    standardize_features: bool = False
 ) -> Dict:
     """
     Train Cox PH model for survival analysis.
@@ -197,6 +200,8 @@ def train_survival_model(
     
     # 2. Fit model
     print("\n[2/3] Fitting Cox PH model...")
+    if standardize_features:
+        print("  Feature standardization: ENABLED (coefficients represent 1 SD change)")
     model, df_train = fit_cox_model(
         df=df,
         analysis_type="survival",  # Just for logging, not used
@@ -204,7 +209,8 @@ def train_survival_model(
         penalizer=penalizer,
         l1_ratio=l1_ratio,
         duration_col=duration_col,
-        event_col=event_col
+        event_col=event_col,
+        standardize_features=standardize_features
     )
     
     # 3. Get predictions on training data

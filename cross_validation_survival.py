@@ -19,6 +19,7 @@ from pathlib import Path
 from sklearn.model_selection import StratifiedKFold
 from lifelines import CoxPHFitter
 from lifelines.utils import concordance_index
+from src.modeling import CoxPHModel
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -34,9 +35,15 @@ def load_and_prepare_data(data_path, duration_col, event_col):
 
 
 def stratified_cv_cox(df, feature_cols, duration_col, event_col, 
-                      n_splits=5, penalizer=0.1, l1_ratio=0.0, random_state=42):
+                      n_splits=5, penalizer=0.1, l1_ratio=0.0, random_state=42,
+                      standardize_features=False):
     """
     Perform stratified K-fold cross-validation for Cox PH model.
+    
+    Parameters
+    ----------
+    standardize_features : bool
+        If True, standardize numeric features before training.
     
     Returns:
         dict with c_indices, mean, std, and fold details
@@ -55,6 +62,7 @@ def stratified_cv_cox(df, feature_cols, duration_col, event_col,
     print(f"\n{'─'*60}")
     print(f"Running {n_splits}-Fold Stratified Cross-Validation")
     print(f"Penalizer: {penalizer}, L1 Ratio: {l1_ratio}")
+    print(f"Standardization: {'ENABLED' if standardize_features else 'DISABLED'}")
     print(f"{'─'*60}")
     
     for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X, y_event), 1):
@@ -70,18 +78,19 @@ def stratified_cv_cox(df, feature_cols, duration_col, event_col,
         print(f"  Train: {len(df_train)} samples, {train_events} events ({train_events/len(df_train)*100:.1f}%)")
         print(f"  Val:   {len(df_val)} samples, {val_events} events ({val_events/len(df_val)*100:.1f}%)")
         
-        # Fit Cox model
-        model = CoxPHFitter(penalizer=penalizer, l1_ratio=l1_ratio)
-        
+        # Fit Cox model using our wrapper class
         try:
+            model = CoxPHModel(penalizer=penalizer, l1_ratio=l1_ratio, 
+                             standardize_features=standardize_features)
             model.fit(
-                df_train[feature_cols + [duration_col, event_col]],
+                df=df_train,
                 duration_col=duration_col,
-                event_col=event_col
+                event_col=event_col,
+                feature_cols=feature_cols
             )
             
-            # Calculate C-index on training set
-            risk_train = model.predict_partial_hazard(df_train[feature_cols]).values
+            # Calculate C-index on training set (using model's predict_risk method)
+            risk_train = model.predict_risk(df_train[feature_cols])
             c_train = concordance_index(
                 df_train[duration_col],
                 -risk_train,
@@ -90,7 +99,7 @@ def stratified_cv_cox(df, feature_cols, duration_col, event_col,
             c_indices_train.append(c_train)
             
             # Calculate C-index on validation set
-            risk_val = model.predict_partial_hazard(df_val[feature_cols]).values
+            risk_val = model.predict_risk(df_val[feature_cols])
             c_val = concordance_index(
                 df_val[duration_col],
                 -risk_val,
@@ -113,6 +122,8 @@ def stratified_cv_cox(df, feature_cols, duration_col, event_col,
             
         except Exception as e:
             print(f"  ⚠️ Fold {fold_idx} failed: {e}")
+            import traceback
+            traceback.print_exc()
             continue
     
     # Calculate summary statistics
@@ -139,7 +150,7 @@ def stratified_cv_cox(df, feature_cols, duration_col, event_col,
 
 def tune_penalizer(df, feature_cols, duration_col, event_col, 
                    penalizers=[0.01, 0.05, 0.1, 0.2, 0.5, 1.0],
-                   n_splits=5, random_state=42):
+                   n_splits=5, random_state=42, standardize_features=False):
     """
     Find optimal penalizer using cross-validation.
     """
@@ -147,6 +158,7 @@ def tune_penalizer(df, feature_cols, duration_col, event_col,
     print("TUNING REGULARIZATION STRENGTH")
     print(f"{'='*60}")
     print(f"Testing penalizers: {penalizers}")
+    print(f"Standardization: {'ENABLED' if standardize_features else 'DISABLED'}")
     
     results_list = []
     
@@ -154,7 +166,8 @@ def tune_penalizer(df, feature_cols, duration_col, event_col,
         print(f"\n▶ Penalizer = {pen}")
         results = stratified_cv_cox(
             df, feature_cols, duration_col, event_col,
-            n_splits=n_splits, penalizer=pen, random_state=random_state
+            n_splits=n_splits, penalizer=pen, random_state=random_state,
+            standardize_features=standardize_features
         )
         results_list.append(results)
     
@@ -281,6 +294,7 @@ def main():
     
     penalizers = [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]
     n_splits = 5
+    standardize_features = True  # Enable standardization
     
     # Datasets to evaluate (using cleaned data with sparse features removed)
     datasets = {
@@ -314,18 +328,20 @@ def main():
         # Tune penalizer
         results_list, best_pen, best_result = tune_penalizer(
             df, feature_cols, config['duration'], config['event'],
-            penalizers=penalizers, n_splits=n_splits
+            penalizers=penalizers, n_splits=n_splits,
+            standardize_features=standardize_features
         )
         
         # Plot results
+        suffix = '_standardized' if standardize_features else ''
         plot_cv_results(
-            results_list, penalizers, name.replace('_', ' '),
-            output_dir / f'{name}_cv_penalizer_comparison.png'
+            results_list, penalizers, name.replace('_', ' ') + (' (Standardized)' if standardize_features else ''),
+            output_dir / f'{name}_cv_penalizer_comparison{suffix}.png'
         )
         
         plot_fold_details(
-            best_result, name.replace('_', ' '),
-            output_dir / f'{name}_cv_fold_details.png'
+            best_result, name.replace('_', ' ') + (' (Standardized)' if standardize_features else ''),
+            output_dir / f'{name}_cv_fold_details{suffix}.png'
         )
         
         all_results[name] = {
@@ -354,8 +370,10 @@ def main():
     print("\n" + summary_df.to_string(index=False))
     
     # Save summary
-    summary_df.to_csv(output_dir / 'cv_summary.csv', index=False)
+    summary_filename = 'cv_summary_standardized.csv' if standardize_features else 'cv_summary.csv'
+    summary_df.to_csv(output_dir / summary_filename, index=False)
     print(f"\n📊 All results saved to: {output_dir}/")
+    print(f"   Summary saved as: {summary_filename}")
     
     # Create comparison plot
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -372,7 +390,10 @@ def main():
     ax.axhline(y=0.7, color='green', linestyle='--', linewidth=2, alpha=0.5, label='Good')
     
     ax.set_ylabel('Cross-Validated C-index', fontsize=14, fontweight='bold')
-    ax.set_title('Model Comparison: Stratified 5-Fold CV', fontsize=16, fontweight='bold')
+    title = 'Model Comparison: Stratified 5-Fold CV'
+    if standardize_features:
+        title += ' (with Standardization)'
+    ax.set_title(title, fontsize=16, fontweight='bold')
     ax.set_xticks(x)
     ax.set_xticklabels(models, fontsize=12)
     ax.set_ylim(0.4, 1.0)
@@ -384,8 +405,9 @@ def main():
                f'{val:.3f}±{std:.3f}', ha='center', va='bottom', fontsize=11, fontweight='bold')
     
     plt.tight_layout()
-    plt.savefig(output_dir / 'model_comparison_cv.png', dpi=300, bbox_inches='tight')
-    print(f"Saved: {output_dir / 'model_comparison_cv.png'}")
+    comparison_filename = 'model_comparison_cv_standardized.png' if standardize_features else 'model_comparison_cv.png'
+    plt.savefig(output_dir / comparison_filename, dpi=300, bbox_inches='tight')
+    print(f"Saved: {output_dir / comparison_filename}")
     plt.close()
     
     print(f"\n✅ Cross-validation complete!")

@@ -10,6 +10,7 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple, Any
 import joblib
 from pathlib import Path
+from sklearn.preprocessing import StandardScaler
 
 
 class SurvivalModel:
@@ -37,7 +38,7 @@ class CoxPHModel(SurvivalModel):
     Cox Proportional Hazards model for survival analysis.
     """
     
-    def __init__(self, penalizer: float = 0.1, l1_ratio: float = 0.0):
+    def __init__(self, penalizer: float = 0.1, l1_ratio: float = 0.0, standardize_features: bool = False):
         """
         Initialize Cox PH model.
         
@@ -47,10 +48,16 @@ class CoxPHModel(SurvivalModel):
             Regularization strength
         l1_ratio : float
             L1 ratio for elastic net (0 = L2, 1 = L1)
+        standardize_features : bool
+            If True, standardize (z-score) features before training.
+            This improves coefficient interpretability.
         """
         super().__init__()
         self.penalizer = penalizer
         self.l1_ratio = l1_ratio
+        self.standardize_features = standardize_features
+        self.scaler = None
+        self.numeric_features = []
     
     def fit(
         self,
@@ -89,7 +96,32 @@ class CoxPHModel(SurvivalModel):
         self.feature_names = feature_cols
         
         # Prepare data
-        model_df = df[feature_cols + [duration_col, event_col]].dropna()
+        model_df = df[feature_cols + [duration_col, event_col]].copy().dropna()
+        
+        # Identify numeric features for scaling (exclude binary/categorical)
+        if self.standardize_features:
+            # Identify numeric features (continuous variables)
+            # Binary features (0/1) and encoded categoricals typically shouldn't be scaled
+            numeric_cols = []
+            for col in feature_cols:
+                if col in model_df.columns:
+                    unique_vals = model_df[col].dropna().unique()
+                    # Consider it numeric if it has many unique values or is float
+                    if model_df[col].dtype in [np.float64, np.float32, np.int64, np.int32]:
+                        # Check if it's binary (only 0/1) or has more values
+                        if len(unique_vals) > 2 or (len(unique_vals) == 2 and not set(unique_vals).issubset({0, 1, 0.0, 1.0})):
+                            numeric_cols.append(col)
+            
+            self.numeric_features = numeric_cols
+            
+            if self.numeric_features:
+                # Fit scaler on numeric features only
+                self.scaler = StandardScaler()
+                self.scaler.fit(model_df[self.numeric_features])
+                
+                # Transform numeric features
+                model_df[self.numeric_features] = self.scaler.transform(model_df[self.numeric_features])
+                print(f"Standardized {len(self.numeric_features)} numeric features: {', '.join(self.numeric_features[:5])}{'...' if len(self.numeric_features) > 5 else ''}")
         
         # Fit model
         self.model = CoxPHFitter(penalizer=self.penalizer, l1_ratio=self.l1_ratio)
@@ -115,7 +147,12 @@ class CoxPHModel(SurvivalModel):
         if not self.is_fitted:
             raise ValueError("Model not fitted. Call fit() first.")
         
-        return self.model.predict_partial_hazard(df[self.feature_names]).values
+        # Apply scaling if used during training
+        df_scaled = df[self.feature_names].copy()
+        if self.scaler is not None and self.numeric_features:
+            df_scaled[self.numeric_features] = self.scaler.transform(df_scaled[self.numeric_features])
+        
+        return self.model.predict_partial_hazard(df_scaled).values
     
     def predict_survival_function(
         self,
@@ -140,7 +177,12 @@ class CoxPHModel(SurvivalModel):
         if not self.is_fitted:
             raise ValueError("Model not fitted. Call fit() first.")
         
-        return self.model.predict_survival_function(df[self.feature_names], times=times)
+        # Apply scaling if used during training
+        df_scaled = df[self.feature_names].copy()
+        if self.scaler is not None and self.numeric_features:
+            df_scaled[self.numeric_features] = self.scaler.transform(df_scaled[self.numeric_features])
+        
+        return self.model.predict_survival_function(df_scaled, times=times)
     
     def get_summary(self) -> pd.DataFrame:
         """Get model summary with coefficients and statistics."""
@@ -163,12 +205,20 @@ def train_cox_model(
     event_col: str,
     feature_cols: Optional[List[str]] = None,
     penalizer: float = 0.1,
-    l1_ratio: float = 0.0
+    l1_ratio: float = 0.0,
+    standardize_features: bool = False
 ) -> CoxPHModel:
     """
     Convenience function to train a CoxPHModel.
+    
+    Parameters
+    ----------
+    standardize_features : bool
+        If True, standardize numeric features before training.
+        Improves coefficient interpretability (coefficients represent
+        effect of 1 standard deviation change).
     """
-    model = CoxPHModel(penalizer=penalizer, l1_ratio=l1_ratio)
+    model = CoxPHModel(penalizer=penalizer, l1_ratio=l1_ratio, standardize_features=standardize_features)
     model.fit(
         df=df,
         duration_col=duration_col,
