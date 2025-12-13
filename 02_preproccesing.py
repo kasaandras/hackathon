@@ -251,6 +251,8 @@ class EndometrialCancerPreprocessor:
         # Split features and target
         X = model_data.drop(target_var, axis=1)
         y = model_data[target_var]
+
+        model_data.to_csv(self.output_dir / f'{target_var}_cleaned_data.csv', index=False)
         
         print(f"✓ Prepared modeling data for {target_var}: {X.shape[0]} samples, {X.shape[1]} features")
         
