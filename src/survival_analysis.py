@@ -2,8 +2,7 @@
 Survival Analysis Pipeline
 ==========================
 
-Script to run Cox PH model for either Overall Survival (OS) or 
-Recurrence-Free Survival (RFS) analysis.
+Script to run Cox PH model for Recurrence-Free Survival (RFS) analysis.
 """
 
 import pandas as pd
@@ -12,165 +11,18 @@ from pathlib import Path
 from typing import Literal, Optional, List, Tuple, Dict
 from datetime import datetime
 
-from src.modeling import CoxPHModel
+from src.modeling import CoxPHModel, train_cox_model, predict_with_cox_model
 from src.data_loader import load_excel_data
-
-
-def calculate_survival_targets(
-    df: pd.DataFrame,
-    analysis_type: Literal["overall", "recurrence"],
-    fecha_diagnostico: str = "fecha_diagnostico_ap",
-    fecha_recidiva: str = "fecha_recidiva",
-    fecha_muerte: str = "fecha_muerte",
-    fecha_ultima_visita: str = "fecha_ultima_visita",
-    recidiva_col: str = "recidiva",
-    time_unit: str = "days"
-) -> pd.DataFrame:
-    """
-    Calculate survival time (duration) and event indicator from date columns.
-    
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input dataframe with date columns
-    analysis_type : str
-        "overall" for Overall Survival or "recurrence" for Recurrence-Free Survival
-    fecha_diagnostico : str
-        Column name for diagnosis date
-    fecha_recidiva : str
-        Column name for recurrence date
-    fecha_muerte : str
-        Column name for death date
-    fecha_ultima_visita : str
-        Column name for last follow-up date
-    recidiva_col : str
-        Column name for recurrence indicator (binary)
-    time_unit : str
-        Unit for time calculation: "days", "months", or "years"
-    
-    Returns
-    -------
-    pd.DataFrame
-        Dataframe with added 'survival_time' and 'event' columns
-    """
-    df_result = df.copy()
-    
-    # Convert date columns to datetime
-    date_cols = {
-        'diagnostico': fecha_diagnostico,
-        'recidiva': fecha_recidiva,
-        'muerte': fecha_muerte,
-        'ultima_visita': fecha_ultima_visita
-    }
-    
-    for key, col in date_cols.items():
-        if col in df_result.columns:
-            df_result[col] = pd.to_datetime(df_result[col], errors='coerce')
-    
-    # Ensure recidiva is binary if it exists
-    if recidiva_col in df_result.columns:
-        df_result[recidiva_col] = df_result[recidiva_col].astype(float)
-        df_result[recidiva_col] = df_result[recidiva_col].fillna(0).astype(int)
-    
-    # Calculate time conversion factor
-    time_factors = {
-        "days": 1,
-        "months": 30.44,  # Average days per month
-        "years": 365.25   # Average days per year
-    }
-    factor = time_factors.get(time_unit.lower(), 1)
-    
-    # Initialize survival time and event columns
-    df_result['survival_time'] = np.nan
-    df_result['event'] = 0
-    
-    if analysis_type == "overall":
-        # Overall Survival: event = death
-        for idx in df_result.index:
-            diag_date = df_result.loc[idx, fecha_diagnostico]
-            
-            if pd.isna(diag_date):
-                continue
-            
-            # Check for death
-            muerte_date = df_result.loc[idx, fecha_muerte] if fecha_muerte in df_result.columns else pd.NaT
-            ultima_visita = df_result.loc[idx, fecha_ultima_visita] if fecha_ultima_visita in df_result.columns else pd.NaT
-            
-            if pd.notna(muerte_date):
-                # Death occurred
-                duration = (muerte_date - diag_date).days / factor
-                df_result.loc[idx, 'survival_time'] = duration
-                df_result.loc[idx, 'event'] = 1
-            elif pd.notna(ultima_visita):
-                # Censored (alive at last visit)
-                duration = (ultima_visita - diag_date).days / factor
-                df_result.loc[idx, 'survival_time'] = duration
-                df_result.loc[idx, 'event'] = 0
-            else:
-                # Missing both death and last visit - cannot calculate
-                continue
-        
-        print(f"Overall Survival: {df_result['event'].sum()} deaths, "
-              f"{len(df_result) - df_result['event'].sum()} censored")
-    
-    elif analysis_type == "recurrence":
-        # Recurrence-Free Survival: event = recurrence OR death
-        for idx in df_result.index:
-            diag_date = df_result.loc[idx, fecha_diagnostico]
-            
-            if pd.isna(diag_date):
-                continue
-            
-            # Get all possible event dates
-            recidiva_date = df_result.loc[idx, fecha_recidiva] if fecha_recidiva in df_result.columns else pd.NaT
-            muerte_date = df_result.loc[idx, fecha_muerte] if fecha_muerte in df_result.columns else pd.NaT
-            ultima_visita = df_result.loc[idx, fecha_ultima_visita] if fecha_ultima_visita in df_result.columns else pd.NaT
-            
-            # Find earliest event date (recurrence or death)
-            event_dates = []
-            if pd.notna(recidiva_date):
-                event_dates.append(('recurrence', recidiva_date))
-            if pd.notna(muerte_date):
-                event_dates.append(('death', muerte_date))
-            
-            if event_dates:
-                # Event occurred (recurrence or death)
-                earliest_event = min(event_dates, key=lambda x: x[1])
-                duration = (earliest_event[1] - diag_date).days / factor
-                df_result.loc[idx, 'survival_time'] = duration
-                df_result.loc[idx, 'event'] = 1
-            elif pd.notna(ultima_visita):
-                # Censored (no recurrence, no death)
-                duration = (ultima_visita - diag_date).days / factor
-                df_result.loc[idx, 'survival_time'] = duration
-                df_result.loc[idx, 'event'] = 0
-            else:
-                # Missing all dates - cannot calculate
-                continue
-        
-        print(f"Recurrence-Free Survival: {df_result['event'].sum()} events, "
-              f"{len(df_result) - df_result['event'].sum()} censored")
-    
-    else:
-        raise ValueError(f"analysis_type must be 'overall' or 'recurrence', got '{analysis_type}'")
-    
-    # Remove rows with invalid survival times
-    before = len(df_result)
-    df_result = df_result[df_result['survival_time'].notna() & (df_result['survival_time'] >= 0)]
-    after = len(df_result)
-    
-    if before != after:
-        print(f"Removed {before - after} rows with invalid survival times")
-    
-    return df_result
 
 
 def fit_cox_model(
     df: pd.DataFrame,
-    analysis_type: Literal["overall", "recurrence"],
+    analysis_type: str,
     feature_cols: Optional[List[str]] = None,
     penalizer: float = 0.1,
     l1_ratio: float = 0.0,
+    duration_col: str = "survival_time",
+    event_col: str = "event",
     **kwargs
 ) -> Tuple[CoxPHModel, pd.DataFrame]:
     """
@@ -181,7 +33,7 @@ def fit_cox_model(
     df : pd.DataFrame
         Dataframe with survival_time and event columns already calculated
     analysis_type : str
-        "overall" or "recurrence" (for logging purposes)
+        Label used for logging only (no branching logic)
     feature_cols : List[str], optional
         List of feature columns to use. If None, uses all numeric columns
         except survival_time and event
@@ -189,6 +41,10 @@ def fit_cox_model(
         Regularization strength
     l1_ratio : float
         L1 ratio for elastic net regularization
+    duration_col : str
+        Name of the duration column already present in df
+    event_col : str
+        Name of the event indicator column already present in df
     
     Returns
     -------
@@ -199,35 +55,37 @@ def fit_cox_model(
     print(f"Fitting Cox PH Model for {analysis_type.upper()} Survival")
     print(f"{'='*60}")
     
-    # Ensure survival_time and event columns exist
-    if 'survival_time' not in df.columns or 'event' not in df.columns:
-        raise ValueError("Dataframe must have 'survival_time' and 'event' columns. "
-                        "Call calculate_survival_targets() first.")
+    # Ensure duration and event columns exist
+    if duration_col not in df.columns or event_col not in df.columns:
+        raise ValueError(
+            f"Dataframe must have '{duration_col}' and '{event_col}' columns. "
+            "Call calculate_survival_targets() first if you need to create them."
+        )
     
     # Select feature columns
     if feature_cols is None:
-        # Use all numeric columns except survival_time and event
+        # Use all numeric columns except duration and event
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
         feature_cols = [col for col in numeric_cols 
-                       if col not in ['survival_time', 'event']]
+                       if col not in [duration_col, event_col]]
     
     print(f"\nFeatures used: {len(feature_cols)}")
     print(f"  {', '.join(feature_cols[:10])}{'...' if len(feature_cols) > 10 else ''}")
     
     # Initialize and fit model
-    model = CoxPHModel(penalizer=penalizer, l1_ratio=l1_ratio)
-    
-    model.fit(
+    model = train_cox_model(
         df=df,
-        duration_col='survival_time',
-        event_col='event',
-        feature_cols=feature_cols
+        duration_col=duration_col,
+        event_col=event_col,
+        feature_cols=feature_cols,
+        penalizer=penalizer,
+        l1_ratio=l1_ratio
     )
     
     print(f"\nModel fitted successfully!")
     print(f"  Training samples: {len(df)}")
-    print(f"  Events: {df['event'].sum()}")
-    print(f"  Censored: {(df['event'] == 0).sum()}")
+    print(f"  Events: {df[event_col].sum()}")
+    print(f"  Censored: {(df[event_col] == 0).sum()}")
     
     return model, df
 
@@ -259,27 +117,22 @@ def get_predictions(
     print("Generating Predictions")
     print(f"{'='*60}")
     
-    # Get risk scores
-    risk_scores = model.predict_risk(df)
+    if times is None:
+        times = [1, 2, 3, 5]
+    
+    outputs = predict_with_cox_model(model, df, times=times)
+    risk_scores = outputs["risk_scores"]
+    survival_probs = outputs["survival_probabilities"]
+    
     print(f"\nRisk scores calculated for {len(risk_scores)} patients")
     print(f"  Min risk: {risk_scores.min():.4f}")
     print(f"  Max risk: {risk_scores.max():.4f}")
     print(f"  Mean risk: {risk_scores.mean():.4f}")
     
-    # Get survival probabilities
-    if times is None:
-        # Default time points in years
-        times = [1, 2, 3, 5]
-    
-    survival_probs = model.predict_survival_function(df, times=times)
     print(f"\nSurvival probabilities calculated at time points: {times}")
     print(f"  Shape: {survival_probs.shape}")
     
-    return {
-        'risk_scores': risk_scores,
-        'survival_probabilities': survival_probs,
-        'times': times
-    }
+    return outputs
 
 
 def train_survival_model(
@@ -450,7 +303,6 @@ def validate_survival_model(
     
     # 3. Get predictions
     print("\n[3/3] Generating predictions...")
-    risk_scores = model.predict_risk(df)
     
     # Convert years to time units if prediction_years is provided (duration column expected in years)
     if prediction_years is not None:
@@ -460,17 +312,16 @@ def validate_survival_model(
         # Default time points in years
         prediction_times = [1, 2, 3, 5]
     
-    survival_probabilities = model.predict_survival_function(df, times=prediction_times)
+    outputs = predict_with_cox_model(model, df, times=prediction_times)
+    risk_scores = outputs["risk_scores"]
+    survival_probabilities = outputs["survival_probabilities"]
     
     print(f"\nPredictions generated:")
     print(f"  Risk scores: {len(risk_scores)} patients")
     print(f"  Survival probabilities: {survival_probabilities.shape}")
     print(f"  Time points: {prediction_times}")
     
-    return {
-        'risk_scores': risk_scores,
-        'survival_probabilities': survival_probabilities
-    }
+    return outputs
 
 
 if __name__ == "__main__":
