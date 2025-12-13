@@ -41,20 +41,21 @@ print("EXAMPLE 1: Training with existing duration and event columns")
 print("="*70)
 
 # Split once for Overall Survival (OS) dataset and reuse
-os_input = "corrected_preprocessing_output/overall_survival_final_cleaned.csv"
+# Using cleaned data with sparse features removed to fix collinearity
+os_input = "corrected_preprocessing_output/overall_survival_final_cleaned_no_sparse.csv"
 os_train_path, os_test_path = split_once(
     os_input,
-    "corrected_preprocessing_output/os_train_split.csv",
-    "corrected_preprocessing_output/os_test_split.csv",
+    "corrected_preprocessing_output/os_train_split_v2.csv",
+    "corrected_preprocessing_output/os_test_split_v2.csv",
 )
 
 # Train on the train split
-# Using penalizer > 0 to handle collinearity and small sample size
+# Using penalizer=1.0 (optimal from cross-validation)
 train_results = train_survival_model(
     data_path=os_train_path,
     duration_col="os_time",
     event_col="os_event",
-    penalizer=0.1,  # Ridge regularization to handle collinearity
+    penalizer=1.0,  # Optimal regularization from CV
     l1_ratio=0.0,
     prediction_years=[1, 2, 3, 5],
     save_model="models/cox_model_os.pkl"
@@ -76,7 +77,7 @@ for year in [1, 2, 3, 5]:
     survival = survival_probs[closest_time]
     print(f"  {year} year(s) (time point: {closest_time:.2f}): Mean={survival.mean():.4f}, Min={survival.min():.4f}, Max={survival.max():.4f}")
 
-# Validate on the held-out test split
+# Validate on the held-out test split (uses same features as training)
 print("\nValidating on held-out OS test split...")
 val_results_os = validate_survival_model(
     data_path=os_test_path,
@@ -105,18 +106,19 @@ print("EXAMPLE 2: Calculate survival targets from dates, then train")
 print("="*70)
 
 # Split once for Recurrence-Free Survival (RFS) dataset and reuse
-rfs_input = "corrected_preprocessing_output/recurrence_free_survival_final_cleaned.csv"
+# Using cleaned data for consistency
+rfs_input = "corrected_preprocessing_output/recurrence_free_survival_final_cleaned_no_sparse.csv"
 rfs_train_path, rfs_test_path = split_once(
     rfs_input,
-    "corrected_preprocessing_output/rfs_train_split.csv",
-    "corrected_preprocessing_output/rfs_test_split.csv",
+    "corrected_preprocessing_output/rfs_train_split_v2.csv",
+    "corrected_preprocessing_output/rfs_test_split_v2.csv",
 )
 
 results_train = train_survival_model(
     data_path=rfs_train_path,
     duration_col="rfs_time",  # Name of your duration column
     event_col="rfs_event",    # Name of your event column
-    penalizer=0.1,  # Ridge regularization to handle collinearity
+    penalizer=1.0,  # Optimal regularization from CV
     l1_ratio=0.0,
     prediction_years=[1, 2, 3, 5],  # Survival at 1, 2, 3, and 5 years
     save_model="models/cox_model_recurrent.pkl"
