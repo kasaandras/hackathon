@@ -284,15 +284,17 @@ def create_tumor_section():
                     html.I(className="bi bi-info-circle", id="cerv-info", style={"cursor": "pointer", "fontSize": "0.8rem"}),
                 ], className="form-label", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
                 dbc.Tooltip("Cervical stromal invasion", target="cerv-info", placement="top"),
-                dbc.RadioItems(
-                    id="cervical_invasion",
-                    options=[{"label": "Yes", "value": 1}, {"label": "No", "value": 0}],
-                    inline=True, className="mb-3",
-                    inputStyle={"marginRight": "5px"},
-                    labelStyle={"marginRight": "15px", "color": COLORS["text"]},
-                ),
-            ], md=6, lg=4),
-        ], className="align-items-end"),
+                html.Div([
+                    dbc.RadioItems(
+                        id="cervical_invasion",
+                        options=[{"label": "Yes", "value": 1}, {"label": "No", "value": 0}],
+                        inline=True,
+                        inputStyle={"marginRight": "5px"},
+                        labelStyle={"marginRight": "15px", "color": COLORS["text"]},
+                    ),
+                ], style={"padding": "8px 0", "minHeight": "38px", "display": "flex", "alignItems": "center"}),
+            ], md=6, lg=4, className="mb-3"),
+        ]),
     ], style=CARD_STYLE)
 
 
@@ -353,119 +355,11 @@ def create_results_section():
     return html.Div([
         html.H4("📈 Survival Prediction Results", style=HEADER_STYLE),
         
-        # Overall Survival (OS) Section
-        html.Div([
-            html.Div([
-                html.H5("Overall Survival (OS)", style={
-                    "color": COLORS["text"],
-                    "fontWeight": "600",
-                    "marginBottom": "5px",
-                }),
-                html.P("Time from diagnosis until death from any cause", style={
-                    "color": COLORS["text_muted"],
-                    "fontSize": "0.8rem",
-                    "marginBottom": "15px",
-                }),
-            ]),
-            dbc.Row([
-                dbc.Col([
-                    html.Div([
-                        html.Span("3-Year", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
-                        html.Div(id="os-3yr", children="—%", style={
-                            "color": COLORS["accent"],
-                            "fontSize": "1.8rem",
-                            "fontWeight": "700",
-                            "fontFamily": "'Fira Code', monospace",
-                        }),
-                    ], style={"textAlign": "center"})
-                ], xs=4),
-                dbc.Col([
-                    html.Div([
-                        html.Span("5-Year", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
-                        html.Div(id="os-5yr", children="—%", style={
-                            "color": COLORS["accent"],
-                            "fontSize": "1.8rem",
-                            "fontWeight": "700",
-                            "fontFamily": "'Fira Code', monospace",
-                        }),
-                    ], style={"textAlign": "center"})
-                ], xs=4),
-                dbc.Col([
-                    html.Div([
-                        html.Span("Risk", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
-                        html.Div(id="os-risk", children="—", style={
-                            "color": COLORS["accent"],
-                            "fontSize": "1.2rem",
-                            "fontWeight": "600",
-                            "fontFamily": "'Fira Code', monospace",
-                        }),
-                    ], style={"textAlign": "center"})
-                ], xs=4),
-            ]),
-        ], style={
-            "backgroundColor": COLORS["background"],
-            "borderRadius": "8px",
-            "border": f"1px solid {COLORS['border']}",
-            "padding": "15px",
-            "marginBottom": "15px",
-        }),
-        
-        # Recurrence-Free Survival (RFS) Section
-        html.Div([
-            html.Div([
-                html.H5("Recurrence-Free Survival (RFS)", style={
-                    "color": COLORS["text"],
-                    "fontWeight": "600",
-                    "marginBottom": "5px",
-                }),
-                html.P("Time from diagnosis until recurrence or death", style={
-                    "color": COLORS["text_muted"],
-                    "fontSize": "0.8rem",
-                    "marginBottom": "15px",
-                }),
-            ]),
-            dbc.Row([
-                dbc.Col([
-                    html.Div([
-                        html.Span("3-Year", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
-                        html.Div(id="rfs-3yr", children="—%", style={
-                            "color": "#7c3aed",  # Purple for RFS
-                            "fontSize": "1.8rem",
-                            "fontWeight": "700",
-                            "fontFamily": "'Fira Code', monospace",
-                        }),
-                    ], style={"textAlign": "center"})
-                ], xs=4),
-                dbc.Col([
-                    html.Div([
-                        html.Span("5-Year", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
-                        html.Div(id="rfs-5yr", children="—%", style={
-                            "color": "#7c3aed",
-                            "fontSize": "1.8rem",
-                            "fontWeight": "700",
-                            "fontFamily": "'Fira Code', monospace",
-                        }),
-                    ], style={"textAlign": "center"})
-                ], xs=4),
-                dbc.Col([
-                    html.Div([
-                        html.Span("Risk", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
-                        html.Div(id="rfs-risk", children="—", style={
-                            "color": "#7c3aed",
-                            "fontSize": "1.2rem",
-                            "fontWeight": "600",
-                            "fontFamily": "'Fira Code', monospace",
-                        }),
-                    ], style={"textAlign": "center"})
-                ], xs=4),
-            ]),
-        ], style={
-            "backgroundColor": COLORS["background"],
-            "borderRadius": "8px",
-            "border": f"1px solid {COLORS['border']}",
-            "padding": "15px",
-            "marginBottom": "20px",
-        }),
+        # Dynamic results container - populated by callback
+        html.Div(id="survival-results", children=[
+            html.P("Click 'Calculate' to see results", 
+                   style={"color": COLORS["text_muted"], "textAlign": "center", "padding": "20px"})
+        ]),
         
         # Survival Curve Placeholder
         html.Div([
@@ -490,6 +384,30 @@ def create_results_section():
             ]),
         ]),
         
+    ], style=CARD_STYLE)
+
+
+def create_prediction_timeframe_section():
+    """Create prediction timeframe input section"""
+    return html.Div([
+        html.H4("⏱️ Prediction Timeframe", style=HEADER_STYLE),
+        dbc.Row([
+            dbc.Col([
+                html.Label("Select Years", className="form-label", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                dcc.Dropdown(
+                    id="prediction-years",
+                    options=[{"label": f"{i} Year{'s' if i > 1 else ''}", "value": i} for i in range(1, 11)],
+                    value=[3, 5],  # Default selection
+                    multi=True,
+                    placeholder="Select years...",
+                    className="mb-3",
+                ),
+            ], md=6),
+        ]),
+        html.P(
+            "Select one or more years (1-10) at which to calculate survival probability.",
+            style={"color": COLORS["text_muted"], "fontSize": "0.85rem", "marginTop": "-10px"}
+        ),
     ], style=CARD_STYLE)
 
 
@@ -535,6 +453,7 @@ app.layout = html.Div([
                         create_staging_section(),
                         create_molecular_section(),
                         create_treatment_section(),
+                        create_prediction_timeframe_section(),
                         create_submit_button(),
                     ],
                     lg={"size": 8, "offset": 2},  # Centered initially
@@ -680,17 +599,13 @@ app.layout = html.Div([
     [
         Output("input-column", "lg"),
         Output("results-column", "style"),
-        Output("os-3yr", "children"),
-        Output("os-5yr", "children"),
-        Output("os-risk", "children"),
-        Output("rfs-3yr", "children"),
-        Output("rfs-5yr", "children"),
-        Output("rfs-risk", "children"),
+        Output("survival-results", "children"),
         Output("survival-curve", "figure"),
         Output("risk-factors", "children"),
     ],
     Input("calculate-btn", "n_clicks"),
     [
+        State("prediction-years", "value"),
         State("age", "value"),
         State("bmi", "value"),
         State("asa", "value"),
@@ -712,7 +627,7 @@ app.layout = html.Div([
     ],
     prevent_initial_call=True,
 )
-def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
+def calculate_survival(n_clicks, selected_years, age, bmi, asa, histological_type, tumor_grade,
                        tumor_size, lvsi, myometrial_invasion, cervical_invasion,
                        figo_stage, risk_group, p53_status, pole_status, mmr_status,
                        neoadjuvant, brachytherapy, chemotherapy, radiotherapy):
@@ -723,18 +638,17 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
     Currently generates mock results for UI demonstration.
     """
     
+    # Handle empty year selection
+    if not selected_years:
+        selected_years = [3, 5]
+    years = sorted(selected_years)
+    
     # =========================================================================
     # PLACEHOLDER LOGIC - Replace with actual model predictions
     # =========================================================================
     
-    # Generate placeholder survival probabilities
-    # In production, this would be: S(t) = S0(t)^exp(βX)
-    
-    # Mock baseline survival (would come from Cox model)
-    # OS typically has higher survival than RFS (since RFS includes recurrence events)
-    os_baseline_3yr = 0.95
+    # Mock baseline 5-year survival (would come from Cox model)
     os_baseline_5yr = 0.90
-    rfs_baseline_3yr = 0.88
     rfs_baseline_5yr = 0.80
     
     # Mock linear predictor calculation (sum of β*X)
@@ -814,44 +728,47 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
         linear_predictor += 0.2
         risk_factors_list.append(("Cervical stromal invasion", "+", "Moderate"))
     
-    # Calculate survival probabilities
-    # S(t) = S0(t)^exp(linear_predictor)
+    # Calculate survival probabilities for all selected years
+    # S(t) = S0(t)^exp(linear_predictor) where S0 is baseline at time t
     hazard_ratio = np.exp(linear_predictor)
     
-    # OS calculations
-    os_3yr = os_baseline_3yr ** hazard_ratio
-    os_5yr = os_baseline_5yr ** hazard_ratio
-    os_3yr = max(0.05, min(0.99, os_3yr))
-    os_5yr = max(0.02, min(0.99, os_5yr))
+    # Annual survival rate (approximation from 5-year baseline)
+    os_annual_rate = os_baseline_5yr ** (1/5)
+    rfs_annual_rate = rfs_baseline_5yr ** (1/5)
     
-    # RFS calculations (slightly worse due to recurrence events)
-    rfs_3yr = rfs_baseline_3yr ** (hazard_ratio * 1.1)  # RFS typically worse
-    rfs_5yr = rfs_baseline_5yr ** (hazard_ratio * 1.1)
-    rfs_3yr = max(0.05, min(0.99, rfs_3yr))
-    rfs_5yr = max(0.02, min(0.99, rfs_5yr))
+    # Calculate survival for each selected year
+    os_survivals = {}
+    rfs_survivals = {}
     
-    # Determine risk categories
-    def get_risk_category(surv_5yr):
-        if surv_5yr >= 0.85:
+    for year in years:
+        os_surv = (os_annual_rate ** year) ** hazard_ratio
+        rfs_surv = (rfs_annual_rate ** year) ** (hazard_ratio * 1.1)
+        os_survivals[year] = max(0.02, min(0.99, os_surv))
+        rfs_survivals[year] = max(0.02, min(0.99, rfs_surv))
+    
+    # Determine risk categories (based on the longest timepoint)
+    def get_risk_category(surv):
+        if surv >= 0.85:
             return "Low"
-        elif surv_5yr >= 0.65:
+        elif surv >= 0.65:
             return "Moderate"
         else:
             return "High"
     
-    os_risk_cat = get_risk_category(os_5yr)
-    rfs_risk_cat = get_risk_category(rfs_5yr)
+    max_year = max(years)
+    os_risk_cat = get_risk_category(os_survivals[max_year])
+    rfs_risk_cat = get_risk_category(rfs_survivals[max_year])
     
     # =========================================================================
     # CREATE SURVIVAL CURVE FIGURE
     # =========================================================================
     
-    # Generate survival curve data
-    time_points = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+    # Generate survival curve data - extend to max of user's years + 1
+    time_points = np.linspace(0, max_year + 1, 20)
     
     # Exponential decay based on hazard for both outcomes
-    os_lambda = -np.log(os_5yr) / 5
-    rfs_lambda = -np.log(rfs_5yr) / 5
+    os_lambda = -np.log(os_survivals[max_year]) / max_year
+    rfs_lambda = -np.log(rfs_survivals[max_year]) / max_year
     os_curve = np.exp(-os_lambda * time_points)
     rfs_curve = np.exp(-rfs_lambda * time_points)
     
@@ -877,7 +794,7 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
     
     # Add markers for key timepoints - OS
     fig.add_trace(go.Scatter(
-        x=[3, 5], y=[os_3yr, os_5yr],
+        x=years, y=[os_survivals[y] for y in years],
         mode='markers',
         name='OS Timepoints',
         marker=dict(color=COLORS["accent"], size=10, symbol='diamond'),
@@ -886,7 +803,7 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
     
     # Add markers for key timepoints - RFS
     fig.add_trace(go.Scatter(
-        x=[3, 5], y=[rfs_3yr, rfs_5yr],
+        x=years, y=[rfs_survivals[y] for y in years],
         mode='markers',
         name='RFS Timepoints',
         marker=dict(color='#7c3aed', size=10, symbol='diamond'),
@@ -904,7 +821,7 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
             title='Years from Diagnosis',
             color=COLORS["text_muted"],
             gridcolor=COLORS["border"],
-            range=[0, 5.5],
+            range=[0, max_year + 1.5],
             showline=False,
             zeroline=False,
         ),
@@ -966,15 +883,71 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
                    style={"color": COLORS["text_muted"], "fontStyle": "italic"})
         ]
     
+    # Build dynamic results display
+    def build_survival_row(survivals, color, risk_cat):
+        cols = []
+        for year in years:
+            cols.append(
+                dbc.Col([
+                    html.Div([
+                        html.Span(f"{year}-Year", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                        html.Div(f"{survivals[year]*100:.1f}%", style={
+                            "color": color,
+                            "fontSize": "1.6rem",
+                            "fontWeight": "700",
+                            "fontFamily": "'Fira Code', monospace",
+                        }),
+                    ], style={"textAlign": "center"})
+                ], xs=12 // min(len(years) + 1, 4))
+            )
+        # Add risk category
+        cols.append(
+            dbc.Col([
+                html.Div([
+                    html.Span("Risk", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                    html.Div(risk_cat, style={
+                        "color": color,
+                        "fontSize": "1.2rem",
+                        "fontWeight": "600",
+                        "fontFamily": "'Fira Code', monospace",
+                    }),
+                ], style={"textAlign": "center"})
+            ], xs=12 // min(len(years) + 1, 4))
+        )
+        return dbc.Row(cols)
+    
+    survival_results = html.Div([
+        # OS Section
+        html.Div([
+            html.H5("Overall Survival (OS)", style={"color": COLORS["text"], "fontWeight": "600", "marginBottom": "5px"}),
+            html.P("Time from diagnosis until death from any cause", style={"color": COLORS["text_muted"], "fontSize": "0.8rem", "marginBottom": "15px"}),
+            build_survival_row(os_survivals, COLORS["accent"], os_risk_cat),
+        ], style={
+            "backgroundColor": COLORS["background"],
+            "borderRadius": "8px",
+            "border": f"1px solid {COLORS['border']}",
+            "padding": "15px",
+            "marginBottom": "15px",
+        }),
+        
+        # RFS Section
+        html.Div([
+            html.H5("Recurrence-Free Survival (RFS)", style={"color": COLORS["text"], "fontWeight": "600", "marginBottom": "5px"}),
+            html.P("Time from diagnosis until recurrence or death", style={"color": COLORS["text_muted"], "fontSize": "0.8rem", "marginBottom": "15px"}),
+            build_survival_row(rfs_survivals, "#7c3aed", rfs_risk_cat),
+        ], style={
+            "backgroundColor": COLORS["background"],
+            "borderRadius": "8px",
+            "border": f"1px solid {COLORS['border']}",
+            "padding": "15px",
+            "marginBottom": "20px",
+        }),
+    ])
+    
     return (
         6,  # Change input column to lg=6 (left side)
         {"display": "block"},  # Show results column
-        f"{os_3yr*100:.1f}%",  # OS 3-year
-        f"{os_5yr*100:.1f}%",  # OS 5-year
-        os_risk_cat,  # OS risk category
-        f"{rfs_3yr*100:.1f}%",  # RFS 3-year
-        f"{rfs_5yr*100:.1f}%",  # RFS 5-year
-        rfs_risk_cat,  # RFS risk category
+        survival_results,  # Dynamic survival results
         fig,
         risk_factors_display,
     )
