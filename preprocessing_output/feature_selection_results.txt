@@ -1,0 +1,78 @@
+ENDOMETRIAL CANCER - FEATURE SELECTION RESULTS
+==================================================
+
+TARGET: RECURRENCE
+------------------------------
+Rank | Feature | Correlation | P-value | Type | Sample Size
+----------------------------------------------------------------------
+   1 | recidiva_exitus           |       0.931 |   0.000 | numeric     |  163
+   2 | estadificacion_           |       0.454 |   0.000 | numeric     |  139
+   3 | final_grade               |       0.453 |   0.000 | numeric     |  145
+   4 | lymphovascular_invasion   |       0.439 |   0.000 | numeric     |  144
+   5 | tumor_grade_preop         |       0.411 |   0.000 | numeric     |  163
+   6 | preoperative_risk_group   |       0.404 |   0.000 | numeric     |  161
+   7 | figo_stage_2023           |       0.398 |   0.000 | numeric     |  142
+   8 | inf_param_vag             |       0.373 |   0.000 | numeric     |  146
+   9 | histological_subtype_preop |       0.363 |   0.000 | numeric     |  163
+  10 | final_histology           |       0.362 |   0.000 | numeric     |  151
+  11 | surgery_time              |       0.357 |   0.000 | numeric     |  138
+  12 | tec_Qx                    |       0.349 |   0.000 | numeric     |  148
+  13 | chemotherapy              |       0.336 |   0.000 | numeric     |  153
+  14 | preoperative_staging      |       0.328 |   0.000 | numeric     |  160
+  15 | indication_radiotherapy   |       0.326 |   0.000 | numeric     |  155
+  16 | est_pcte                  |       0.323 |   0.000 | numeric     |  163
+  17 | tec_linf_para             |       0.319 |   0.000 | numeric     |  134
+  18 | ap_gPaor_total            |       0.308 |   0.001 | numeric     |  118
+  19 | infilt_estr_cervix        |       0.301 |   0.000 | numeric     |  150
+  20 | sentinel_node_pathology   |       0.286 |   0.001 | numeric     |  132
+
+TARGET: FINAL_RISK_GROUP
+------------------------------
+Rank | Feature | Correlation | P-value | Type | Sample Size
+----------------------------------------------------------------------
+   1 | estadificacion_           |       0.940 |   0.000 | numeric     |  135
+   2 | figo_stage_2023           |       0.911 |   0.000 | numeric     |  138
+   3 | preoperative_risk_group   |       0.790 |   0.000 | numeric     |  143
+   4 | preoperative_staging      |       0.724 |   0.000 | numeric     |  143
+   5 | myometrial_invasion       |       0.712 |   0.000 | numeric     |  136
+   6 | chemotherapy              |       0.697 |   0.000 | numeric     |  141
+   7 | indication_radiotherapy   |       0.662 |   0.000 | numeric     |  143
+   8 | tec_linf_para             |       0.658 |   0.000 | numeric     |  127
+   9 | ap_gPaor_total            |       0.610 |   0.000 | numeric     |  114
+  10 | tumor_grade_preop         |       0.601 |   0.000 | numeric     |  143
+  11 | lymphovascular_invasion   |       0.589 |   0.000 | numeric     |  137
+  12 | final_grade               |       0.577 |   0.000 | numeric     |  138
+  13 | n_total_ganPaor_infra     |       0.572 |   0.000 | numeric     |  105
+  14 | tec_linf_pelv             |       0.564 |   0.000 | numeric     |  128
+  15 | n_total_ganCent           |       0.549 |   0.000 | numeric     |  123
+  16 | tumor_size                |       0.543 |   0.000 | numeric     |  127
+  17 | recidiva_exitus           |       0.538 |   0.000 | numeric     |  143
+  18 | surgery_time              |       0.531 |   0.000 | numeric     |  131
+  19 | brachytherapy             |       0.526 |   0.000 | numeric     |  143
+  20 | n_total_ganPaor_supr      |       0.496 |   0.000 | numeric     |  104
+
+TARGET: DISEASE_FREE
+------------------------------
+Rank | Feature | Correlation | P-value | Type | Sample Size
+----------------------------------------------------------------------
+   1 | estadificacion_           |       0.471 |   0.000 | numeric     |  139
+   2 | tumor_grade_preop         |       0.464 |   0.000 | numeric     |  163
+   3 | chemotherapy              |       0.428 |   0.000 | numeric     |  153
+   4 | figo_stage_2023           |       0.421 |   0.000 | numeric     |  142
+   5 | preoperative_staging      |       0.419 |   0.000 | numeric     |  160
+   6 | final_grade               |       0.415 |   0.000 | numeric     |  145
+   7 | tec_Qx                    |       0.402 |   0.000 | numeric     |  148
+   8 | distant_metastasis        |       0.396 |   0.000 | numeric     |  159
+   9 | preoperative_risk_group   |       0.395 |   0.000 | numeric     |  161
+  10 | ap_gPaor_total            |       0.380 |   0.000 | numeric     |  118
+  11 | est_pcte                  |       0.334 |   0.000 | numeric     |  163
+  12 | tec_linf_para             |       0.328 |   0.000 | numeric     |  134
+  13 | myometrial_invasion       |       0.304 |   0.000 | numeric     |  146
+  14 | lymphovascular_invasion   |       0.300 |   0.000 | numeric     |  144
+  15 | n_total_ganPaor_infra     |       0.300 |   0.002 | numeric     |  106
+  16 | surgery_time              |       0.300 |   0.000 | numeric     |  138
+  17 | ap_gPor_afect_tot         |       0.299 |   0.001 | numeric     |  113
+  18 | afectacion_omen           |       0.299 |   0.001 | numeric     |  125
+  19 | n_total_ganPaor_supr      |       0.292 |   0.003 | numeric     |  105
+  20 | n_total_ganCent           |       0.280 |   0.001 | numeric     |  127
+
