@@ -49,11 +49,12 @@ os_train_path, os_test_path = split_once(
 )
 
 # Train on the train split
+# Using penalizer > 0 to handle collinearity and small sample size
 train_results = train_survival_model(
     data_path=os_train_path,
     duration_col="os_time",
     event_col="os_event",
-    penalizer=0.0,
+    penalizer=0.1,  # Ridge regularization to handle collinearity
     l1_ratio=0.0,
     prediction_years=[1, 2, 3, 5],
     save_model="models/cox_model_os.pkl"
@@ -115,7 +116,7 @@ results_train = train_survival_model(
     data_path=rfs_train_path,
     duration_col="rfs_time",  # Name of your duration column
     event_col="rfs_event",    # Name of your event column
-    penalizer=0.0,
+    penalizer=0.1,  # Ridge regularization to handle collinearity
     l1_ratio=0.0,
     prediction_years=[1, 2, 3, 5],  # Survival at 1, 2, 3, and 5 years
     save_model="models/cox_model_recurrent.pkl"
