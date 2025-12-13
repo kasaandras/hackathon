@@ -19,16 +19,12 @@ if str(_PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(_PROJECT_DIR))
 
 import dash
-from dash import dcc, html, callback, Output, Input, State, ALL
+from dash import dcc, html, callback, Output, Input, State
 import dash_bootstrap_components as dbc
 import plotly.graph_objects as go
-import plotly.express as px
 import numpy as np
 import pandas as pd
 import joblib
-from pathlib import Path
-import base64
-import io
 
 # ============================================================================
 # APP INITIALIZATION
@@ -1199,23 +1195,23 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
         # Filter to max time
         mask = times_days <= max_days
         
-    fig.add_trace(go.Scatter(
+        fig.add_trace(go.Scatter(
             x=times_years[mask],
             y=probs[mask],
             mode='lines',
             name='Overall Survival',
-        line=dict(color=COLORS["accent"], width=3),
-    ))
-    
+            line=dict(color=COLORS["accent"], width=3),
+        ))
+        
         # Add markers at prediction years
-    fig.add_trace(go.Scatter(
+        fig.add_trace(go.Scatter(
             x=list(os_results['probabilities'].keys()),
             y=list(os_results['probabilities'].values()),
-        mode='markers',
-        name='OS Timepoints',
+            mode='markers',
+            name='OS Timepoints',
             marker=dict(color=COLORS["accent"], size=12, symbol='diamond'),
-        showlegend=False,
-    ))
+            showlegend=False,
+        ))
     
     if rfs_results:
         surv_func = rfs_results['survival_function']
