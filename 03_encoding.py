@@ -14,15 +14,15 @@ import argparse
 from pathlib import Path
 from typing import Iterable, List
 
+import numpy as np
 import pandas as pd
+from scipy import sparse
 
 # Columns that behave like categorical factors in the cleaned disease_free dataset.
 DEFAULT_CATEGORICAL_COLUMNS = [
     "estadificacion_",
-    "tumor_grade_preop",
     "figo_stage_2023",
     "preoperative_staging",
-    "final_grade",
     "preoperative_risk_group",
     "est_pcte",
     "tec_linf_para",
@@ -34,7 +34,6 @@ DEFAULT_CATEGORICAL_COLUMNS = [
     "histological_subtype_preop",
     "sentinel_node_pathology"
 ]
-
 
 def parse_column_args(raw_columns: Iterable[str] | None) -> List[str]:
     """Normalize column arguments to a clean list."""
@@ -67,6 +66,49 @@ def get_columns_to_encode(df: pd.DataFrame, requested_columns: List[str]) -> Lis
     return valid
 
 
+def scipy_one_hot_column(
+    series: pd.Series,
+    drop_first: bool,
+    prefix_sep: str = "__",
+) -> pd.DataFrame:
+    """
+    Build a one-hot encoded block for a single column using SciPy sparse matrices.
+    """
+    categorical = pd.Categorical(series)
+    categories = list(categorical.categories)
+    if not categories:
+        return pd.DataFrame(index=series.index)
+
+    if drop_first:
+        categories = categories[1:]
+        offset = 1
+    else:
+        offset = 0
+
+    if not categories:
+        return pd.DataFrame(index=series.index)
+
+    codes = categorical.codes
+    mask = codes >= offset
+
+    if mask.any():
+        row_indices = np.arange(series.size, dtype=np.int64)[mask]
+        col_indices = codes[mask] - offset
+        data = np.ones(row_indices.size, dtype=np.int8)
+        matrix = sparse.csr_matrix(
+            (data, (row_indices, col_indices)),
+            shape=(series.size, len(categories)),
+        )
+    else:
+        matrix = sparse.csr_matrix((series.size, len(categories)))
+
+    column_names = [f"{series.name}{prefix_sep}{cat}" for cat in categories]
+    encoded_block = pd.DataFrame.sparse.from_spmatrix(
+        matrix, index=series.index, columns=column_names
+    )
+    return encoded_block.astype(pd.SparseDtype("int64", 0))
+
+
 def encode_dataset(
     input_path: Path,
     output_path: Path,
@@ -82,13 +124,11 @@ def encode_dataset(
     columns = get_columns_to_encode(df, columns_to_encode)
     print(f"Encoding {len(columns)} column(s): {', '.join(columns)}")
 
-    encoded_df = pd.get_dummies(
-        df,
-        columns=columns,
-        drop_first=drop_first,
-        prefix_sep="__",
-        dtype="int64",
-    )
+    remaining_df = df.drop(columns=columns)
+    encoded_blocks = [
+        scipy_one_hot_column(df[column], drop_first=drop_first) for column in columns
+    ]
+    encoded_df = pd.concat([remaining_df, *encoded_blocks], axis=1)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     encoded_df.to_csv(output_path, index=False)
