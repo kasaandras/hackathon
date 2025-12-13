@@ -207,7 +207,7 @@ RFS_FEATURES = [
 
 # Human-readable labels for features
 FEATURE_LABELS = {
-    'tumor_size': 'Tumor Size (mm)',
+    'tumor_size': 'Tumor Size (cm)',
     'bmi': 'BMI (kg/m²)',
     'total_sentinel_nodes': 'Total Sentinel Nodes',
     'surgery_time': 'Surgery Time (min)',
@@ -215,7 +215,7 @@ FEATURE_LABELS = {
     'final_grade_encoded': 'Final Tumor Grade',
     'preoperative_risk_group_encoded': 'Preoperative Risk Group',
     'final_risk_group_encoded': 'Final Risk Group',
-    'primary_surgery_type_1.0': 'Primary Surgery (Laparoscopic)',
+    'primary_surgery_type_1.0': 'Primary Surgery (Yes)',
     'preoperative_staging_1.0': 'Preop Staging I',
     'preoperative_staging_2.0': 'Preop Staging II+',
     'sentinel_node_pathology_4.0': 'Sentinel Node Positive',
@@ -498,7 +498,7 @@ def create_common_inputs():
         # Numeric inputs
         html.H6("Numeric Variables", style={"color": COLORS["text"], "marginBottom": "15px", "marginTop": "10px"}),
         dbc.Row([
-            create_numeric_input("tumor_size", "Tumor Size", "e.g., 35", 0, 300, 1, "Tumor diameter in millimeters"),
+            create_numeric_input("tumor_size", "Tumor Size", "e.g., 3.5", 0, 30, 0.1, "Tumor diameter in centimeters"),
             create_numeric_input("bmi", "BMI", "e.g., 28.5", 10, 80, 0.1, "Body Mass Index (kg/m²)"),
             create_numeric_input("total_sentinel_nodes", "Sentinel Nodes", "e.g., 3", 0, 50, 1, "Total sentinel lymph nodes examined"),
         ]),
@@ -656,6 +656,103 @@ app.layout = html.Div([
         ),
     ], id="error-modal", is_open=False, centered=True),
     
+    # Ethical considerations modal
+    dbc.Modal([
+        dbc.ModalHeader(dbc.ModalTitle([
+            html.I(className="bi bi-shield-lock-fill me-2", style={"color": COLORS["accent"]}),
+            "Ethical Considerations & Privacy"
+        ]), close_button=True),
+        dbc.ModalBody([
+            html.Div([
+                html.H5([
+                    html.I(className="bi bi-lock-fill me-2"),
+                    "Data Privacy & Security"
+                ], style={"color": COLORS["accent"], "marginTop": "10px", "marginBottom": "15px"}),
+                html.Ul([
+                    html.Li([
+                        html.Strong("No Data Storage: "),
+                        "This application does not store, log, or transmit any patient data. All calculations are performed locally in your browser session."
+                    ]),
+                    html.Li([
+                        html.Strong("Session-Based Processing: "),
+                        "Patient inputs exist only during your active session and are cleared when you close the browser."
+                    ]),
+                    html.Li([
+                        html.Strong("No Server-Side Storage: "),
+                        "No patient data is saved to disk, databases, or external services."
+                    ]),
+                    html.Li([
+                        html.Strong("Compliance: "),
+                        "When deployed in clinical settings, ensure HIPAA/GDPR compliance with appropriate security safeguards."
+                    ]),
+                ], style={"fontSize": "0.9rem", "lineHeight": "1.8"}),
+                
+                html.H5([
+                    html.I(className="bi bi-eye-fill me-2"),
+                    "Model Explainability & Transparency"
+                ], style={"color": COLORS["accent"], "marginTop": "25px", "marginBottom": "15px"}),
+                html.Ul([
+                    html.Li([
+                        html.Strong("Interpretable Model: "),
+                        "Uses Cox Proportional Hazards model - a transparent statistical approach, not a 'black box'."
+                    ]),
+                    html.Li([
+                        html.Strong("Feature Contributions: "),
+                        "The application shows which clinical variables contribute most to each prediction and how (increased/decreased risk)."
+                    ]),
+                    html.Li([
+                        html.Strong("Hazard Ratios: "),
+                        "Model coefficients represent clinically meaningful hazard ratios showing effect sizes."
+                    ]),
+                    html.Li([
+                        html.Strong("Transparency: "),
+                        "All model features are clinically meaningful variables with clear interpretations."
+                    ]),
+                ], style={"fontSize": "0.9rem", "lineHeight": "1.8"}),
+                
+                html.H5([
+                    html.I(className="bi bi-graph-up-arrow me-2"),
+                    "Understanding Predictions"
+                ], style={"color": COLORS["accent"], "marginTop": "25px", "marginBottom": "15px"}),
+                html.P([
+                    "The ", html.Strong("Feature Contributions chart"), " shows how each input variable affects the prediction:",
+                ], style={"fontSize": "0.9rem"}),
+                html.Ul([
+                    html.Li("Positive contributions (red bars) indicate factors that increase risk"),
+                    html.Li("Negative contributions (green bars) indicate factors that decrease risk"),
+                    html.Li("Bar length shows the magnitude of each feature's impact"),
+                    html.Li("The sum of all contributions determines the overall risk score"),
+                ], style={"fontSize": "0.9rem", "lineHeight": "1.8"}),
+                
+                html.H5([
+                    html.I(className="bi bi-exclamation-circle-fill me-2"),
+                    "Limitations & Bias"
+                ], style={"color": COLORS["accent"], "marginTop": "25px", "marginBottom": "15px"}),
+                html.Ul([
+                    html.Li([
+                        html.Strong("Cohort Limitations: "),
+                        "Models trained on NSMP endometrial cancer patients (n=161) may not generalize to all populations."
+                    ]),
+                    html.Li([
+                        html.Strong("Probabilistic Predictions: "),
+                        "Predictions are probability estimates, not certainties. Individual outcomes may vary."
+                    ]),
+                    html.Li([
+                        html.Strong("External Validation: "),
+                        "Models should be validated on independent cohorts before clinical deployment."
+                    ]),
+                    html.Li([
+                        html.Strong("Clinical Judgment: "),
+                        "Always combine predictions with clinical expertise, patient preferences, and guidelines."
+                    ]),
+                ], style={"fontSize": "0.9rem", "lineHeight": "1.8"}),
+            ])
+        ]),
+        dbc.ModalFooter(
+            dbc.Button("Close", id="close-ethics-modal", className="ms-auto", color="primary")
+        ),
+    ], id="ethics-modal", is_open=False, centered=True, size="lg"),
+    
     create_header(),
     
     dbc.Container([
@@ -697,16 +794,22 @@ app.layout = html.Div([
         # Footer
         html.Div([
             html.Hr(style={"borderColor": COLORS["border"]}),
-            dbc.Alert([
-                html.H6([html.I(className="bi bi-exclamation-triangle-fill me-2"), "Clinical Disclaimer"]),
-                html.P([
-                    "This tool is for ", html.Strong("research and educational purposes only"),
-                    ". Not intended for clinical decision-making without professional medical judgment."
-                ], className="mb-0", style={"fontSize": "0.85rem"}),
-            ], color="warning"),
-            html.P([
-                html.Small(f"Model: Cox PH | Penalizer: 1.0 | Training: NSMP Cohort (n=161) | Models Loaded: {'✓' if MODELS_LOADED else '✗'}"),
-            ], className="text-center", style={"color": COLORS["text_muted"]}),
+            html.Div([
+                dbc.Alert([
+                    html.H6([html.I(className="bi bi-exclamation-triangle-fill me-2"), "Clinical Disclaimer"], 
+                            style={"marginBottom": "5px", "fontSize": "0.9rem"}),
+                    html.P([
+                        "This tool is for ", html.Strong("research and educational purposes only"),
+                        ". Not intended for clinical decision-making without professional medical judgment."
+                    ], className="mb-0", style={"fontSize": "0.8rem"}),
+                ], color="warning", style={"display": "inline-block", "maxWidth": "600px", "padding": "10px 15px"}),
+            ], className="text-center", style={"marginBottom": "15px"}),
+            html.Div([
+                dbc.Button([
+                    html.I(className="bi bi-shield-lock-fill me-2"),
+                    "Privacy & Explainability"
+                ], id="open-ethics-modal", outline=True, color="secondary", size="sm"),
+            ], className="text-center"),
         ]),
         
     ], fluid=True, style={"maxWidth": "1400px"}),
@@ -733,7 +836,7 @@ def prepare_os_features(inputs):
     features = {}
     
     # Map inputs to model features
-    features['tumor_size'] = inputs.get('tumor_size', OS_MEDIANS.get('tumor_size', 30))
+    features['tumor_size'] = inputs.get('tumor_size', OS_MEDIANS.get('tumor_size', 3.0))
     features['bmi'] = inputs.get('bmi', OS_MEDIANS.get('bmi', 28))
     features['total_sentinel_nodes'] = inputs.get('total_sentinel_nodes', OS_MEDIANS.get('total_sentinel_nodes', 2))
     
@@ -782,7 +885,7 @@ def prepare_rfs_features(inputs):
     features = {}
     
     # Numeric
-    features['tumor_size'] = inputs.get('tumor_size', RFS_MEDIANS.get('tumor_size', 30))
+    features['tumor_size'] = inputs.get('tumor_size', RFS_MEDIANS.get('tumor_size', 3.0))
     features['bmi'] = inputs.get('bmi', RFS_MEDIANS.get('bmi', 28))
     features['total_sentinel_nodes'] = inputs.get('total_sentinel_nodes', RFS_MEDIANS.get('total_sentinel_nodes', 2))
     features['surgery_time'] = inputs.get('surgery_time', RFS_MEDIANS.get('surgery_time', 120))
@@ -835,16 +938,33 @@ def create_feature_contribution_chart(model, features_dict, model_name):
     if model is None:
         return go.Figure()
     
-    # Get coefficients
+    # Get coefficients (pandas Series)
     coefs = model.model.params_
     feature_names = model.feature_names
     
     # Calculate contributions: β * x
     contributions = []
     for feat in feature_names:
-        coef = coefs.get(feat, 0)
-        value = features_dict.get(feat, 0)
+        # Access coefficient - use .loc for pandas Series to ensure correct access
+        try:
+            coef = coefs.loc[feat] if feat in coefs.index else 0.0
+        except (KeyError, IndexError):
+            coef = 0.0
+        
+        # Get feature value from dict, handling None and missing values
+        value = features_dict.get(feat)
+        if value is None:
+            value = 0.0
+        else:
+            # Ensure value is numeric
+            try:
+                value = float(value)
+            except (ValueError, TypeError):
+                value = 0.0
+        
+        # Calculate contribution: β * x
         contrib = coef * value
+        
         contributions.append({
             'feature': FEATURE_LABELS.get(feat, feat),
             'contribution': contrib,
@@ -914,6 +1034,21 @@ def toggle_model_inputs(model_selection):
 def close_error_modal(n_clicks, is_open):
     """Close the error modal when OK is clicked"""
     return False, None
+
+
+@callback(
+    Output("ethics-modal", "is_open"),
+    [Input("open-ethics-modal", "n_clicks"),
+     Input("close-ethics-modal", "n_clicks")],
+    State("ethics-modal", "is_open"),
+    prevent_initial_call=True,
+)
+def toggle_ethics_modal(open_clicks, close_clicks, is_open):
+    """Toggle the ethics modal"""
+    # If either button was clicked, toggle the modal state
+    if open_clicks or close_clicks:
+        return not is_open
+    return is_open
 
 
 @callback(
@@ -1307,7 +1442,18 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
         
         # Feature contributions
         html.Div([
-            html.H5("Feature Contributions", style={"color": COLORS["text"], "marginTop": "20px", "marginBottom": "15px"}),
+            html.Div([
+                html.H5("Feature Contributions", style={"color": COLORS["text"], "marginTop": "20px", "marginBottom": "5px"}),
+                html.P([
+                    html.I(className="bi bi-info-circle me-2", style={"color": COLORS["text_muted"]}),
+                    html.Small(
+                        "This chart shows how each clinical variable contributes to the prediction. "
+                        "Positive values (red) increase risk; negative values (green) decrease risk. "
+                        "The model uses Cox Proportional Hazards, providing interpretable, transparent predictions.",
+                        style={"color": COLORS["text_muted"], "fontStyle": "italic"}
+                    ),
+                ], style={"marginBottom": "10px"}),
+            ]),
             dcc.Graph(figure=contrib_fig, config={"displayModeBar": False}, style={"height": "350px"}),
         ]),
         
