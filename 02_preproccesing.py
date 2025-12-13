@@ -1,17 +1,27 @@
 #!/usr/bin/env python3
 """
-Simple Preprocessing Pipeline for Endometrial Cancer Dataset
-Identifies 20 most important features for each target variable and creates baseline models
+Survival Analysis Preprocessing Pipeline for Endometrial Cancer Dataset
+NSMP (No Specific Molecular Profile) Endometrial Cancer Challenge
 
-Target Variables:
-- recurrence (binary): Use logistic regression
-- final_risk_group (ordinal 1-5): Use ordinal regression
-- disease_free (categorical): Use logistic regression
+Creates proper survival outcomes for the challenge requirements:
+1. Recurrence-free survival (time to first recurrence)
+2. Overall survival (time to death from any cause)
+
+Provides comprehensive survival analysis including:
+- Time-to-event outcome creation
+- Top 20 feature selection for each survival endpoint
+- Cox proportional hazards baseline models
+- Cleaned survival datasets ready for advanced modeling
+
+Challenge Requirements:
+- Recurrence-free survival analysis
+- Overall survival analysis
+- Time-to-event modeling
 
 Requirements:
-pip install pandas numpy scikit-learn matplotlib seaborn
+pip install pandas numpy scikit-learn matplotlib seaborn lifelines
 
-Author: Preprocessing Pipeline
+Author: Survival Analysis Preprocessing Pipeline
 Date: December 2025
 """
 
@@ -20,13 +30,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.metrics import classification_report, confusion_matrix, r2_score, mean_squared_error
-from sklearn.feature_selection import SelectKBest, f_classif, f_regression
-from scipy.stats import pearsonr, spearmanr
+from scipy.stats import spearmanr
 import warnings
 from pathlib import Path
+from datetime import datetime
+
+# Survival analysis libraries
+try:
+    from lifelines import CoxPHFitter, KaplanMeierFitter
+    from lifelines.utils import concordance_index
+    SURVIVAL_AVAILABLE = True
+except ImportError:
+    print("⚠️  lifelines not installed. Install with: pip install lifelines")
+    SURVIVAL_AVAILABLE = False
 
 warnings.filterwarnings('ignore')
 
@@ -45,7 +62,7 @@ class EndometrialCancerPreprocessor:
         self.output_dir.mkdir(exist_ok=True)
         print(f"Output directory: {self.output_dir.absolute()}")
         
-        # Variable mapping (same as before)
+        # Variable mapping
         self.variable_mapping = {
             'codigo_participante': 'patient_code',
             'edad': 'age_at_diagnosis',
@@ -139,327 +156,555 @@ class EndometrialCancerPreprocessor:
         
         return numeric_features, categorical_features
     
-    def find_top_features_for_target(self, target_var, numeric_features, categorical_features, k=20):
-        """Find top k features most correlated with target variable."""
-        print(f"\nFinding top {k} features for {target_var}...")
+    def create_survival_outcomes(self):
+        """Create survival outcomes for recurrence-free survival and overall survival."""
+        print("\nCreating survival outcomes...")
         
-        if target_var not in self.df_english.columns:
-            print(f"✗ Target variable {target_var} not found")
+        # Handle mixed date column formats more robustly
+        date_columns = {
+            'pathological_diagnosis_date': 'f_diag',
+            'recurrence_date': 'fecha_de_recidi', 
+            'death_date': 'f_muerte',
+            'last_followup_date': 'Ultima_fecha'
+        }
+        
+        # Convert and parse date columns with different formats
+        for english_name, spanish_name in date_columns.items():
+            if spanish_name in self.df_english.columns:
+                print(f"  Processing {english_name} ({spanish_name})...")
+                
+                if spanish_name in ['f_diag', 'Ultima_fecha']:
+                    # Already datetime format
+                    self.df_english[english_name] = pd.to_datetime(self.df_english[spanish_name], errors='coerce')
+                else:
+                    # Object format - likely DD/MM/YYYY, need to parse
+                    self.df_english[english_name] = pd.to_datetime(self.df_english[spanish_name], 
+                                                                  format='%d/%m/%Y', errors='coerce')
+        
+        # Create recurrence-free survival outcome
+        self.create_recurrence_free_survival()
+        
+        # Create overall survival outcome  
+        self.create_overall_survival()
+        
+        return True
+    
+    def create_recurrence_free_survival(self):
+        """Create recurrence-free survival time and event variables."""
+        print("  Creating recurrence-free survival...")
+        
+        # Initialize survival variables
+        self.df_english['rfs_time'] = np.nan
+        self.df_english['rfs_event'] = 0
+        
+        for idx, row in self.df_english.iterrows():
+            diagnosis_date = row['pathological_diagnosis_date']
+            recurrence_date = row.get('recurrence_date', pd.NaT)
+            last_followup = row.get('last_followup_date', pd.NaT)
+            recurrence_status = row.get('recurrence', 0)
+            
+            if pd.isna(diagnosis_date):
+                continue
+                
+            # If patient had recurrence and we have recurrence date
+            if recurrence_status > 0 and not pd.isna(recurrence_date):
+                time_to_event = (recurrence_date - diagnosis_date).days
+                if time_to_event > 0:  # Valid time
+                    self.df_english.at[idx, 'rfs_time'] = time_to_event
+                    self.df_english.at[idx, 'rfs_event'] = 1
+            
+            # If no recurrence or no recurrence date, use last follow-up (censored)
+            elif not pd.isna(last_followup):
+                time_to_censoring = (last_followup - diagnosis_date).days
+                if time_to_censoring > 0:  # Valid time
+                    self.df_english.at[idx, 'rfs_time'] = time_to_censoring
+                    self.df_english.at[idx, 'rfs_event'] = 0
+        
+        # Remove invalid survival times
+        valid_rfs = self.df_english['rfs_time'].notna() & (self.df_english['rfs_time'] > 0)
+        
+        print(f"    ✓ RFS created for {valid_rfs.sum()}/{len(self.df_english)} patients")
+        print(f"    Events: {self.df_english[valid_rfs]['rfs_event'].sum()}")
+        print(f"    Median follow-up: {self.df_english[valid_rfs]['rfs_time'].median():.0f} days")
+    
+    def create_overall_survival(self):
+        """Create overall survival time and event variables."""
+        print("  Creating overall survival...")
+        
+        # Initialize survival variables
+        self.df_english['os_time'] = np.nan
+        self.df_english['os_event'] = 0
+        
+        for idx, row in self.df_english.iterrows():
+            diagnosis_date = row['pathological_diagnosis_date']
+            death_date = row.get('death_date', pd.NaT)
+            last_followup = row.get('last_followup_date', pd.NaT)
+            
+            # Determine if patient died (check multiple sources)
+            died = False
+            if not pd.isna(death_date):
+                died = True
+            elif 'current_patient_status' in row and row['current_patient_status'] in [2, 3]:  # Common death codes
+                died = True
+                
+            if pd.isna(diagnosis_date):
+                continue
+                
+            # If patient died and we have death date
+            if died and not pd.isna(death_date):
+                time_to_event = (death_date - diagnosis_date).days
+                if time_to_event > 0:  # Valid time
+                    self.df_english.at[idx, 'os_time'] = time_to_event
+                    self.df_english.at[idx, 'os_event'] = 1
+            
+            # If alive or no death date, use last follow-up (censored)
+            elif not pd.isna(last_followup):
+                time_to_censoring = (last_followup - diagnosis_date).days
+                if time_to_censoring > 0:  # Valid time
+                    self.df_english.at[idx, 'os_time'] = time_to_censoring
+                    self.df_english.at[idx, 'os_event'] = 0
+        
+        # Remove invalid survival times
+        valid_os = self.df_english['os_time'].notna() & (self.df_english['os_time'] > 0)
+        
+        print(f"    ✓ OS created for {valid_os.sum()}/{len(self.df_english)} patients")
+        print(f"    Events: {self.df_english[valid_os]['os_event'].sum()}")
+        print(f"    Median follow-up: {self.df_english[valid_os]['os_time'].median():.0f} days")
+    
+    def find_top_features_for_survival(self, outcome_type, numeric_features, categorical_features, k=20):
+        """Find top k features most associated with survival outcomes."""
+        print(f"\nFinding top {k} features for {outcome_type}...")
+        
+        if outcome_type == 'recurrence_free_survival':
+            time_col = 'rfs_time'
+            event_col = 'rfs_event'
+        elif outcome_type == 'overall_survival':
+            time_col = 'os_time'
+            event_col = 'os_event'
+        else:
+            print(f"✗ Unknown outcome type: {outcome_type}")
             return []
         
-        # Get target data (remove missing values)
-        target_data = self.df_english[target_var].dropna()
-        feature_correlations = []
+        if time_col not in self.df_english.columns or event_col not in self.df_english.columns:
+            print(f"✗ Survival variables {time_col}/{event_col} not found")
+            return []
         
-        # Calculate correlations for numeric features
+        # Get survival data (remove missing values)
+        survival_mask = (self.df_english[time_col].notna() & 
+                        self.df_english[event_col].notna() &
+                        (self.df_english[time_col] > 0))
+        survival_data = self.df_english[survival_mask]
+        
+        if len(survival_data) < 20:
+            print(f"✗ Insufficient survival data: {len(survival_data)} patients")
+            return []
+        
+        print(f"  Using {len(survival_data)} patients with complete survival data")
+        
+        feature_associations = []
+        
+        # Calculate associations for numeric features
         for feature in numeric_features:
-            feature_data = self.df_english[feature]
-            
-            # Get common indices (both target and feature available)
-            common_idx = target_data.index.intersection(feature_data.dropna().index)
-            
-            if len(common_idx) > 10:  # Need at least 10 samples
-                target_subset = target_data[common_idx]
-                feature_subset = feature_data[common_idx]
+            if feature in [time_col, event_col]:
+                continue
                 
+            feature_data = survival_data[feature].dropna()
+            common_idx = survival_data.index.intersection(feature_data.index)
+            
+            if len(common_idx) > 10:
                 try:
-                    # Use Spearman correlation (handles ordinal data better)
-                    corr, p_value = spearmanr(feature_subset, target_subset)
-                    if not np.isnan(corr):
-                        feature_correlations.append({
+                    # Correlation with survival time (for prognostic effect)
+                    time_corr, time_p = spearmanr(survival_data.loc[common_idx, feature], 
+                                                 survival_data.loc[common_idx, time_col])
+                    
+                    # Association with event occurrence
+                    event_corr, event_p = spearmanr(survival_data.loc[common_idx, feature], 
+                                                   survival_data.loc[common_idx, event_col])
+                    
+                    # Combined association score (average absolute correlations)
+                    combined_score = (abs(time_corr) + abs(event_corr)) / 2
+                    
+                    if not np.isnan(combined_score):
+                        feature_associations.append({
                             'feature': feature,
-                            'correlation': abs(corr),
-                            'p_value': p_value,
+                            'association_score': combined_score,
+                            'time_corr': time_corr,
+                            'event_corr': event_corr,
+                            'time_p': time_p,
+                            'event_p': event_p,
                             'type': 'numeric',
                             'sample_size': len(common_idx)
                         })
                 except:
                     continue
         
-        # For categorical features, use chi-square or ANOVA
+        # Calculate associations for categorical features
         for feature in categorical_features:
-            feature_data = self.df_english[feature]
-            common_idx = target_data.index.intersection(feature_data.dropna().index)
+            feature_data = survival_data[feature].dropna()
+            common_idx = survival_data.index.intersection(feature_data.index)
             
             if len(common_idx) > 10:
                 try:
-                    # Convert categorical to numeric codes for correlation
+                    # Encode categorical variable
                     le = LabelEncoder()
                     feature_encoded = le.fit_transform(feature_data[common_idx])
-                    target_subset = target_data[common_idx]
                     
-                    corr, p_value = spearmanr(feature_encoded, target_subset)
-                    if not np.isnan(corr):
-                        feature_correlations.append({
+                    # Correlations with encoded variable
+                    time_corr, time_p = spearmanr(feature_encoded, 
+                                                 survival_data.loc[common_idx, time_col])
+                    event_corr, event_p = spearmanr(feature_encoded, 
+                                                   survival_data.loc[common_idx, event_col])
+                    
+                    combined_score = (abs(time_corr) + abs(event_corr)) / 2
+                    
+                    if not np.isnan(combined_score):
+                        feature_associations.append({
                             'feature': feature,
-                            'correlation': abs(corr),
-                            'p_value': p_value,
+                            'association_score': combined_score,
+                            'time_corr': time_corr,
+                            'event_corr': event_corr,
+                            'time_p': time_p,
+                            'event_p': event_p,
                             'type': 'categorical',
                             'sample_size': len(common_idx)
                         })
                 except:
                     continue
         
-        # Sort by correlation strength and get top k
-        feature_correlations.sort(key=lambda x: x['correlation'], reverse=True)
-        top_features = feature_correlations[:k]
+        # Sort by association strength and get top k
+        feature_associations.sort(key=lambda x: x['association_score'], reverse=True)
+        top_features = feature_associations[:k]
         
         # Store results
-        self.target_features[target_var] = top_features
+        self.target_features[outcome_type] = top_features
         
-        print(f"✓ Top {len(top_features)} features for {target_var}:")
+        print(f"✓ Top {len(top_features)} features for {outcome_type}:")
         for i, feat in enumerate(top_features[:10], 1):
-            print(f"  {i:2d}. {feat['feature']:<30} | Corr: {feat['correlation']:.3f} | p: {feat['p_value']:.3f}")
+            print(f"  {i:2d}. {feat['feature']:<30} | Score: {feat['association_score']:.3f} | "
+                  f"Time r: {feat['time_corr']:5.3f} | Event r: {feat['event_corr']:5.3f}")
         if len(top_features) > 10:
             print(f"     ... and {len(top_features) - 10} more")
         
         return top_features
     
-    def prepare_modeling_data(self, target_var):
-        """Prepare data for modeling with selected features."""
-        if target_var not in self.target_features:
-            print(f"✗ No features selected for {target_var}")
+    def prepare_survival_data(self, outcome_type):
+        """Prepare data for survival modeling with selected features."""
+        if outcome_type not in self.target_features:
+            print(f"✗ No features selected for {outcome_type}")
             return None, None, None, None
         
         # Get selected features
-        selected_features = [f['feature'] for f in self.target_features[target_var]]
+        selected_features = [f['feature'] for f in self.target_features[outcome_type]]
         
-        # Prepare dataset with target and features
-        model_data = self.df_english[[target_var] + selected_features].copy()
+        # Determine survival columns
+        if outcome_type == 'recurrence_free_survival':
+            time_col = 'rfs_time'
+            event_col = 'rfs_event'
+        elif outcome_type == 'overall_survival':
+            time_col = 'os_time'
+            event_col = 'os_event'
+        else:
+            print(f"✗ Unknown outcome type: {outcome_type}")
+            return None, None, None, None
         
-        # Remove rows where target is missing
-        model_data = model_data.dropna(subset=[target_var])
+        # Prepare dataset with survival outcome and features
+        survival_data = self.df_english[[time_col, event_col] + selected_features].copy()
+        
+        # Remove rows where survival data is missing
+        survival_data = survival_data.dropna(subset=[time_col, event_col])
+        survival_data = survival_data[survival_data[time_col] > 0]  # Positive survival times only
         
         # Handle missing values in features (simple imputation)
-        numeric_cols = model_data.select_dtypes(include=[np.number]).columns.tolist()
-        numeric_cols.remove(target_var)  # Exclude target
+        numeric_cols = survival_data.select_dtypes(include=[np.number]).columns.tolist()
+        # Remove survival columns from features
+        numeric_cols = [c for c in numeric_cols if c not in [time_col, event_col]]
         
         # Impute numeric features with median
         for col in numeric_cols:
-            if model_data[col].isnull().any():
-                model_data[col].fillna(model_data[col].median(), inplace=True)
+            if survival_data[col].isnull().any():
+                survival_data[col].fillna(survival_data[col].median(), inplace=True)
         
         # Encode categorical features
-        categorical_cols = model_data.select_dtypes(include=['object']).columns.tolist()
+        categorical_cols = survival_data.select_dtypes(include=['object']).columns.tolist()
         for col in categorical_cols:
-            if model_data[col].isnull().any():
-                model_data[col].fillna(model_data[col].mode()[0], inplace=True)
+            if survival_data[col].isnull().any():
+                survival_data[col].fillna(survival_data[col].mode()[0], inplace=True)
             
             le = LabelEncoder()
-            model_data[col] = le.fit_transform(model_data[col])
+            survival_data[col] = le.fit_transform(survival_data[col])
         
-        # Split features and target
-        X = model_data.drop(target_var, axis=1)
-        y = model_data[target_var]
-
-        model_data.to_csv(self.output_dir / f'{target_var}_cleaned_data.csv', index=False)
+        # Split features and survival outcome
+        X = survival_data.drop([time_col, event_col], axis=1)
+        survival_outcome = survival_data[[time_col, event_col]]
         
-        print(f"✓ Prepared modeling data for {target_var}: {X.shape[0]} samples, {X.shape[1]} features")
+        print(f"✓ Prepared survival data for {outcome_type}: {X.shape[0]} samples, {X.shape[1]} features")
         
-        return X, y, selected_features, model_data
+        # Save cleaned survival dataset
+        survival_data.to_csv(self.output_dir / f'{outcome_type}_cleaned_survival_data.csv', index=False)
+        
+        return X, survival_outcome, selected_features, survival_data
     
-    def create_baseline_model(self, target_var):
-        """Create and train baseline model."""
-        X, y, features, _ = self.prepare_modeling_data(target_var)
+    def create_survival_model(self, outcome_type):
+        """Create and train survival model."""
+        if not SURVIVAL_AVAILABLE:
+            print("✗ Survival analysis libraries not available. Install lifelines: pip install lifelines")
+            return None
+        
+        X, survival_outcome, features, full_data = self.prepare_survival_data(outcome_type)
         
         if X is None:
             return None
         
-        # Split data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+        # Determine survival columns
+        if outcome_type == 'recurrence_free_survival':
+            time_col = 'rfs_time'
+            event_col = 'rfs_event'
+        else:  # overall_survival
+            time_col = 'os_time'
+            event_col = 'os_event'
+        
+        # Split data for validation
+        train_idx, test_idx = train_test_split(full_data.index, test_size=0.3, random_state=42)
+        train_data = full_data.loc[train_idx].copy()
+        test_data = full_data.loc[test_idx].copy()
         
         # Scale features
         scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
+        feature_cols = [c for c in full_data.columns if c not in [time_col, event_col]]
+        
+        train_data_scaled = train_data.copy()
+        test_data_scaled = test_data.copy()
+        
+        train_data_scaled[feature_cols] = scaler.fit_transform(train_data[feature_cols])
+        test_data_scaled[feature_cols] = scaler.transform(test_data[feature_cols])
         
         # Store scaler
-        self.scalers[target_var] = scaler
+        self.scalers[outcome_type] = scaler
         
-        # Choose model based on target variable type
-        if target_var == 'recurrence':
-            # Binary classification
-            model = LogisticRegression(random_state=42, max_iter=1000)
-            model.fit(X_train_scaled, y_train)
+        try:
+            # Fit Cox Proportional Hazards model
+            cph = CoxPHFitter(penalizer=0.1)  # Add penalty term
+            cph.fit(train_data_scaled, duration_col=time_col, event_col=event_col)
             
-            # Predictions
-            y_pred = model.predict(X_test_scaled)
-            y_proba = model.predict_proba(X_test_scaled)[:, 1]
+            # Predictions and evaluation
+            c_index_train = cph.concordance_index_
+            c_index_test = concordance_index(test_data[time_col], 
+                                           -cph.predict_partial_hazard(test_data_scaled), 
+                                           test_data[event_col])
             
-            # Evaluation
-            print(f"\n{target_var.upper()} - Binary Classification Results:")
-            print(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")
-            print("\nClassification Report:")
-            print(classification_report(y_test, y_pred))
+            print(f"\n{outcome_type.upper().replace('_', ' ')} - Cox Regression Results:")
+            print(f"Training samples: {len(train_data)}, Testing samples: {len(test_data)}")
+            print(f"Events in training: {train_data[event_col].sum()}/{len(train_data)}")
+            print(f"Events in testing: {test_data[event_col].sum()}/{len(test_data)}")
+            print(f"C-index (training): {c_index_train:.3f}")
+            print(f"C-index (testing): {c_index_test:.3f}")
             
-        elif target_var == 'final_risk_group':
-            # Treat as regression (ordinal)
-            model = LinearRegression()
-            model.fit(X_train_scaled, y_train)
+            # Show top significant features
+            hazard_ratios = cph.hazard_ratios_.sort_values(ascending=False)
+            p_values = cph.summary['p']
             
-            # Predictions
-            y_pred = model.predict(X_test_scaled)
+            print(f"\nTop 5 Most Significant Features (p < 0.05):")
+            sig_features = p_values[p_values < 0.05].sort_values()
+            for feature in sig_features.head().index:
+                hr = hazard_ratios[feature]
+                p_val = p_values[feature]
+                direction = "↑ Risk" if hr > 1 else "↓ Risk"
+                print(f"  {feature:<25} | HR: {hr:5.2f} | p: {p_val:6.3f} | {direction}")
             
-            # Evaluation
-            r2 = r2_score(y_test, y_pred)
-            mse = mean_squared_error(y_test, y_pred)
+            # Store model
+            self.models[outcome_type] = {
+                'model': cph,
+                'features': features,
+                'train_data': train_data,
+                'test_data': test_data,
+                'c_index_train': c_index_train,
+                'c_index_test': c_index_test
+            }
             
-            print(f"\n{target_var.upper()} - Regression Results:")
-            print(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")
-            print(f"R² Score: {r2:.3f}")
-            print(f"MSE: {mse:.3f}")
-            print(f"RMSE: {np.sqrt(mse):.3f}")
+            return cph
             
-        elif target_var == 'disease_free':
-            # Multi-class classification
-            model = LogisticRegression(random_state=42, max_iter=1000, multi_class='ovr')
-            model.fit(X_train_scaled, y_train)
-            
-            # Predictions
-            y_pred = model.predict(X_test_scaled)
-            
-            # Evaluation
-            print(f"\n{target_var.upper()} - Multi-class Classification Results:")
-            print(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")
-            print("\nClassification Report:")
-            print(classification_report(y_test, y_pred))
-        
-        # Store model
-        self.models[target_var] = {
-            'model': model,
-            'features': features,
-            'X_train': X_train,
-            'X_test': X_test,
-            'y_train': y_train,
-            'y_test': y_test,
-            'y_pred': y_pred
-        }
-        
-        return model
+        except Exception as e:
+            print(f"✗ Error fitting survival model: {e}")
+            return None
     
-    def create_feature_importance_plot(self, target_var):
-        """Create feature importance visualization."""
-        if target_var not in self.target_features:
+    def create_survival_feature_importance_plot(self, outcome_type):
+        """Create feature importance visualization for survival outcomes."""
+        if outcome_type not in self.target_features:
             return
         
         # Get top features data
-        features_data = self.target_features[target_var][:15]  # Top 15 for visualization
+        features_data = self.target_features[outcome_type][:15]  # Top 15 for visualization
         
         features = [f['feature'] for f in features_data]
-        correlations = [f['correlation'] for f in features_data]
+        association_scores = [f['association_score'] for f in features_data]
         
         # Create plot
         plt.figure(figsize=(12, 8))
         y_pos = np.arange(len(features))
         
-        plt.barh(y_pos, correlations, color='steelblue', alpha=0.7)
+        plt.barh(y_pos, association_scores, color='darkred', alpha=0.7)
         plt.yticks(y_pos, [f.replace('_', ' ').title() for f in features])
-        plt.xlabel('Absolute Correlation with Target')
-        plt.title(f'Top 15 Features Correlated with {target_var.replace("_", " ").title()}')
+        plt.xlabel('Survival Association Score')
+        plt.title(f'Top 15 Features for {outcome_type.replace("_", " ").title()}')
         plt.grid(axis='x', alpha=0.3)
         
-        # Add correlation values on bars
-        for i, v in enumerate(correlations):
-            plt.text(v + max(correlations) * 0.01, i, f'{v:.3f}', va='center')
+        # Add association scores on bars
+        for i, v in enumerate(association_scores):
+            plt.text(v + max(association_scores) * 0.01, i, f'{v:.3f}', va='center')
         
         plt.gca().invert_yaxis()
         plt.tight_layout()
-        plt.savefig(self.output_dir / f'{target_var}_feature_importance.png', dpi=300, bbox_inches='tight')
-        plt.show()
+        plt.savefig(self.output_dir / f'{outcome_type}_feature_importance.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"  ✓ Saved plot: {outcome_type}_feature_importance.png")
     
-    def save_preprocessing_results(self):
-        """Save preprocessing results to files."""
-        print(f"\nSaving results to {self.output_dir}...")
+    def save_survival_results(self):
+        """Save survival analysis preprocessing results to files."""
+        print(f"\nSaving survival analysis results to {self.output_dir}...")
         
         # Save feature selection results
-        with open(self.output_dir / 'feature_selection_results.txt', 'w', encoding='utf-8') as f:
-            f.write("ENDOMETRIAL CANCER - FEATURE SELECTION RESULTS\n")
-            f.write("=" * 50 + "\n\n")
+        with open(self.output_dir / 'survival_analysis_results.txt', 'w', encoding='utf-8') as f:
+            f.write("ENDOMETRIAL CANCER - SURVIVAL ANALYSIS FEATURE SELECTION\n")
+            f.write("=" * 60 + "\n\n")
+            f.write(f"Analysis Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Challenge Outcomes: Recurrence-free Survival & Overall Survival\n\n")
             
-            for target_var, features_data in self.target_features.items():
-                f.write(f"TARGET: {target_var.upper()}\n")
-                f.write("-" * 30 + "\n")
-                f.write("Rank | Feature | Correlation | P-value | Type | Sample Size\n")
-                f.write("-" * 70 + "\n")
-                
-                for i, feat in enumerate(features_data, 1):
-                    f.write(f"{i:4d} | {feat['feature']:<25} | {feat['correlation']:11.3f} | "
-                           f"{feat['p_value']:7.3f} | {feat['type']:<11} | {feat['sample_size']:4d}\n")
-                f.write("\n")
+            if hasattr(self, 'target_features') and self.target_features:
+                for outcome, features_data in self.target_features.items():
+                    f.write(f"SURVIVAL OUTCOME: {outcome.upper().replace('_', ' ')}\n")
+                    f.write("-" * 40 + "\n")
+                    f.write("Rank | Feature | Association | Time Corr | Event Corr | Time p | Event p | Type | N\n")
+                    f.write("-" * 90 + "\n")
+                    
+                    for i, feat in enumerate(features_data, 1):
+                        f.write(f"{i:4d} | {feat['feature']:<20} | {feat['association_score']:11.3f} | "
+                               f"{feat['time_corr']:9.3f} | {feat['event_corr']:10.3f} | "
+                               f"{feat['time_p']:6.3f} | {feat['event_p']:7.3f} | "
+                               f"{feat['type']:<11} | {feat['sample_size']:3d}\n")
+                    f.write("\n")
+            else:
+                f.write("No features selected - check survival outcome creation.\n\n")
+            
+            # Add model performance summary if models exist
+            if hasattr(self, 'models') and self.models:
+                f.write("BASELINE COX REGRESSION PERFORMANCE:\n")
+                f.write("-" * 40 + "\n")
+                for outcome, model_info in self.models.items():
+                    if model_info:
+                        f.write(f"{outcome.replace('_', ' ').title()}:\n")
+                        f.write(f"  C-index (train): {model_info['c_index_train']:.3f}\n")
+                        f.write(f"  C-index (test):  {model_info['c_index_test']:.3f}\n")
+                        
+                        # Handle event column naming correctly
+                        if outcome == 'recurrence_free_survival':
+                            event_col = 'rfs_event'
+                        elif outcome == 'overall_survival':
+                            event_col = 'os_event'
+                        else:
+                            event_col = f"{outcome}_event"
+                        
+                        if event_col in model_info['train_data'].columns:
+                            f.write(f"  Training events: {model_info['train_data'][event_col].sum()}\n")
+                            f.write(f"  Testing events:  {model_info['test_data'][event_col].sum()}\n")
+                        f.write("\n")
         
-        # Save selected features as CSV for easy import
-        for target_var, features_data in self.target_features.items():
-            features_df = pd.DataFrame(features_data)
-            features_df.to_csv(self.output_dir / f'{target_var}_top_features.csv', index=False)
+        # Save selected features as CSV for easy import if they exist
+        if hasattr(self, 'target_features') and self.target_features:
+            for outcome, features_data in self.target_features.items():
+                features_df = pd.DataFrame(features_data)
+                features_df.to_csv(self.output_dir / f'{outcome}_top_features.csv', index=False)
         
-        print("✓ Results saved successfully")
+        print("✓ Survival analysis results saved successfully")
     
-    def run_preprocessing_pipeline(self):
-        """Run the complete preprocessing pipeline."""
-        print("ENDOMETRIAL CANCER - PREPROCESSING PIPELINE")
-        print("=" * 50)
+    def run_survival_preprocessing_pipeline(self):
+        """Run the complete survival analysis preprocessing pipeline."""
+        print("ENDOMETRIAL CANCER - SURVIVAL ANALYSIS PREPROCESSING")
+        print("=" * 60)
         
         # Load data
         if not self.load_and_prepare_data():
             return False
         
+        # Create survival outcomes
+        if not self.create_survival_outcomes():
+            return False
+        
         # Identify usable features
         numeric_features, categorical_features = self.identify_usable_features()
         
-        # Define target variables
-        target_variables = ['recurrence', 'final_risk_group', 'disease_free']
-        available_targets = [t for t in target_variables if t in self.df_english.columns]
+        # Define survival outcomes for the challenge
+        survival_outcomes = ['recurrence_free_survival', 'overall_survival']
         
-        print(f"\nTarget variables found: {available_targets}")
+        print(f"\nSurvival outcomes for analysis: {survival_outcomes}")
         
-        # Process each target variable
-        for target_var in available_targets:
-            print(f"\n{'='*60}")
-            print(f"PROCESSING TARGET: {target_var.upper()}")
-            print(f"{'='*60}")
+        # Process each survival outcome
+        for outcome in survival_outcomes:
+            print(f"\n{'='*70}")
+            print(f"PROCESSING SURVIVAL OUTCOME: {outcome.upper().replace('_', ' ')}")
+            print(f"{'='*70}")
             
             # Find top features
-            self.find_top_features_for_target(target_var, numeric_features, categorical_features)
+            self.find_top_features_for_survival(outcome, numeric_features, categorical_features)
             
-            # Create baseline model
-            self.create_baseline_model(target_var)
+            # Create survival model
+            self.create_survival_model(outcome)
             
             # Create visualization
-            self.create_feature_importance_plot(target_var)
+            self.create_survival_feature_importance_plot(outcome)
         
         # Save results
-        self.save_preprocessing_results()
+        self.save_survival_results()
         
-        print(f"\n{'='*60}")
-        print("PREPROCESSING COMPLETED SUCCESSFULLY!")
-        print(f"{'='*60}")
+        print(f"\n{'='*70}")
+        print("SURVIVAL ANALYSIS PREPROCESSING COMPLETED!")
+        print(f"{'='*70}")
         print(f"\nGenerated files in {self.output_dir}:")
-        print("  - feature_selection_results.txt")
-        print("  - [target]_top_features.csv (for each target)")
-        print("  - [target]_feature_importance.png (for each target)")
-        print("\nBaseline model performance printed above.")
-        print("Ready for advanced modeling by your team!")
+        print("  - survival_analysis_results.txt")
+        print("  - [outcome]_top_features.csv (for each survival outcome)")
+        print("  - [outcome]_feature_importance.png (for each outcome)")
+        print("  - [outcome]_cleaned_survival_data.csv (ready for modeling)")
+        print("\nCox regression baseline models trained and evaluated.")
+        print("Ready for advanced survival modeling by your team!")
         
         return True
 
 # Main execution
 if __name__ == "__main__":
+    print("ENDOMETRIAL CANCER SURVIVAL ANALYSIS PREPROCESSING")
+    print("=" * 60)
+    print("Challenge Requirements:")
+    print("  1. Recurrence-free survival analysis")
+    print("  2. Overall survival analysis") 
+    print("  3. Time-to-event modeling with Cox regression")
+    print("=" * 60)
+    
     # CHANGE THIS PATH TO MATCH YOUR EXCEL FILE LOCATION
     excel_file_path = "IQ_Cancer_Endometrio_merged_NMSP.xlsx"
     
     # Create output directory
-    output_directory = "preprocessing_output"
+    output_directory = "survival_preprocessing_output"
     
-    # Initialize and run preprocessor
+    # Initialize and run survival preprocessor
     preprocessor = EndometrialCancerPreprocessor(excel_file_path, output_directory)
-    success = preprocessor.run_preprocessing_pipeline()
+    success = preprocessor.run_survival_preprocessing_pipeline()
     
     if success:
-        print(f"\n✓ Preprocessing complete! Check {output_directory}/ for results.")
-        print("\n📊 SUMMARY FOR YOUR TEAM:")
-        print("  - Feature selection completed for all target variables")
-        print("  - Baseline models trained and evaluated")
-        print("  - Top 20 features identified for each target")
-        print("  - Data ready for advanced modeling techniques")
+        print(f"\n✓ Survival preprocessing complete! Check {output_directory}/ for results.")
+        print("\n📊 SUMMARY FOR YOUR SURVIVAL ANALYSIS TEAM:")
+        print("  ✅ Recurrence-free survival outcomes created")
+        print("  ✅ Overall survival outcomes created") 
+        print("  ✅ Top 20 features identified for each survival endpoint")
+        print("  ✅ Cox regression baseline models trained")
+        print("  ✅ Cleaned survival datasets ready for advanced modeling")
+        print("\n🎯 NEXT STEPS FOR ADVANCED MODELING:")
+        print("  • Random Survival Forests")
+        print("  • Deep survival networks")
+        print("  • Ensemble survival methods")
+        print("  • Time-dependent AUC optimization")
     else:
-        print("\n✗ Preprocessing failed. Check error messages above.")
+        print("\n✗ Survival preprocessing failed. Check error messages above.")
+        print("\n💡 TROUBLESHOOTING:")
+        if not SURVIVAL_AVAILABLE:
+            print("  • Install survival libraries: pip install lifelines scikit-survival")
+        print("  • Check date column formats in your dataset")
+        print("  • Verify patient follow-up data completeness")
