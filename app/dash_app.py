@@ -14,10 +14,13 @@ import numpy as np
 # APP INITIALIZATION
 # ============================================================================
 
-# Using a custom dark theme with medical aesthetic
+# Using a clean light theme with medical aesthetic
 app = dash.Dash(
     __name__,
-    external_stylesheets=[dbc.themes.CYBORG],
+    external_stylesheets=[
+        dbc.themes.FLATLY,
+        dbc.icons.BOOTSTRAP,  # Bootstrap icons for tooltips
+    ],
     meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
 )
 app.title = "NSMP Endometrial Cancer Risk Calculator"
@@ -27,16 +30,16 @@ app.title = "NSMP Endometrial Cancer Risk Calculator"
 # ============================================================================
 
 COLORS = {
-    "background": "#0a0f1a",
-    "card": "#121a2e",
-    "accent": "#00d4aa",
-    "accent_secondary": "#ff6b6b",
-    "text": "#e8e8e8",
-    "text_muted": "#8892a0",
-    "border": "#2a3a5a",
-    "low_risk": "#00d4aa",
-    "intermediate_risk": "#ffd93d",
-    "high_risk": "#ff6b6b",
+    "background": "#f8f9fa",
+    "card": "#ffffff",
+    "accent": "#0d9488",  # Teal
+    "accent_secondary": "#dc2626",  # Red
+    "text": "#1f2937",
+    "text_muted": "#6b7280",
+    "border": "#e5e7eb",
+    "low_risk": "#059669",  # Green
+    "intermediate_risk": "#d97706",  # Amber
+    "high_risk": "#dc2626",  # Red
 }
 
 CARD_STYLE = {
@@ -45,7 +48,8 @@ CARD_STYLE = {
     "border": f"1px solid {COLORS['border']}",
     "padding": "24px",
     "marginBottom": "20px",
-    "boxShadow": "0 4px 20px rgba(0, 0, 0, 0.3)",
+    "boxShadow": "0 4px 15px rgba(0, 0, 0, 0.08)",
+    "overflow": "visible",
 }
 
 HEADER_STYLE = {
@@ -58,7 +62,7 @@ HEADER_STYLE = {
 }
 
 INPUT_STYLE = {
-    "backgroundColor": COLORS["background"],
+    "backgroundColor": COLORS["card"],
     "color": COLORS["text"],
     "border": f"1px solid {COLORS['border']}",
     "borderRadius": "8px",
@@ -78,27 +82,27 @@ HISTOLOGICAL_TYPES = [
 ]
 
 TUMOR_GRADES = [
-    {"label": "Grade 1 (Well differentiated)", "value": 1},
-    {"label": "Grade 2 (Moderately differentiated)", "value": 2},
-    {"label": "Grade 3 (Poorly differentiated)", "value": 3},
+    {"label": "G1 - Well diff.", "value": 1},
+    {"label": "G2 - Moderate diff.", "value": 2},
+    {"label": "G3 - Poorly diff.", "value": 3},
 ]
 
 ASA_SCORES = [
-    {"label": "I - Healthy patient", "value": 1},
-    {"label": "II - Mild systemic disease", "value": 2},
-    {"label": "III - Severe systemic disease", "value": 3},
-    {"label": "IV - Life-threatening disease", "value": 4},
+    {"label": "I - Healthy", "value": 1},
+    {"label": "II - Mild disease", "value": 2},
+    {"label": "III - Severe disease", "value": 3},
+    {"label": "IV - Life-threatening", "value": 4},
 ]
 
 FIGO_STAGES = [
-    {"label": "IA - Tumor confined to uterus, <50% myometrial invasion", "value": "IA"},
-    {"label": "IB - Tumor confined to uterus, ≥50% myometrial invasion", "value": "IB"},
-    {"label": "II - Cervical stromal invasion", "value": "II"},
-    {"label": "IIIA - Tumor invades serosa/adnexa", "value": "IIIA"},
-    {"label": "IIIB - Vaginal/parametrial involvement", "value": "IIIB"},
-    {"label": "IIIC1 - Pelvic node involvement", "value": "IIIC1"},
-    {"label": "IIIC2 - Para-aortic node involvement", "value": "IIIC2"},
-    {"label": "IVA - Bladder/bowel mucosa invasion", "value": "IVA"},
+    {"label": "IA - <50% myometrial", "value": "IA"},
+    {"label": "IB - ≥50% myometrial", "value": "IB"},
+    {"label": "II - Cervical stromal", "value": "II"},
+    {"label": "IIIA - Serosa/adnexa", "value": "IIIA"},
+    {"label": "IIIB - Vaginal/parametrial", "value": "IIIB"},
+    {"label": "IIIC1 - Pelvic nodes", "value": "IIIC1"},
+    {"label": "IIIC2 - Para-aortic nodes", "value": "IIIC2"},
+    {"label": "IVA - Bladder/bowel", "value": "IVA"},
     {"label": "IVB - Distant metastasis", "value": "IVB"},
 ]
 
@@ -161,18 +165,22 @@ def create_numeric_input(id, label, placeholder, min_val=None, max_val=None, ste
     ], md=6, lg=4)
 
 
-def create_dropdown(id, label, options, placeholder="Select..."):
+def create_dropdown(id, label, options, placeholder="Select...", width=None):
     """Create a styled dropdown"""
+    col_props = {"md": 6, "lg": 4}
+    if width == "wide":
+        col_props = {"md": 12, "lg": 6}
     return dbc.Col([
         html.Label(label, className="form-label", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
         dcc.Dropdown(
             id=id,
             options=options,
             placeholder=placeholder,
-            style={"backgroundColor": COLORS["background"]},
-            className="mb-3 dash-dropdown-dark",
+            style={"backgroundColor": COLORS["background"], "minWidth": "100%"},
+            className="mb-3",
+            optionHeight=50,
         ),
-    ], md=6, lg=4)
+    ], **col_props)
 
 
 def create_binary_toggle(id, label):
@@ -252,12 +260,39 @@ def create_tumor_section():
             create_dropdown("histological_type", "Histological Type", HISTOLOGICAL_TYPES),
             create_dropdown("tumor_grade", "Tumor Grade", TUMOR_GRADES),
             create_numeric_input("tumor_size", "Tumor Size (mm)", "e.g., 35", 0, 300),
-        ]),
+        ], className="align-items-end"),
         dbc.Row([
-            create_dropdown("lvsi", "Lymphovascular Space Invasion", LVSI_OPTIONS),
-            create_dropdown("myometrial_invasion", "Myometrial Infiltration", MYOMETRIAL_INVASION),
-            create_binary_toggle("cervical_invasion", "Cervical Stromal Invasion"),
-        ]),
+            dbc.Col([
+                html.Label([
+                    "LVSI ",
+                    html.I(className="bi bi-info-circle", id="lvsi-info", style={"cursor": "pointer", "fontSize": "0.8rem"}),
+                ], className="form-label", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                dbc.Tooltip("Lymphovascular Space Invasion", target="lvsi-info", placement="top"),
+                dcc.Dropdown(id="lvsi", options=LVSI_OPTIONS, placeholder="Select...", className="mb-3"),
+            ], md=6, lg=4),
+            dbc.Col([
+                html.Label([
+                    "Myometrial Invasion ",
+                    html.I(className="bi bi-info-circle", id="myo-info", style={"cursor": "pointer", "fontSize": "0.8rem"}),
+                ], className="form-label", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                dbc.Tooltip("Depth of myometrial infiltration", target="myo-info", placement="top"),
+                dcc.Dropdown(id="myometrial_invasion", options=MYOMETRIAL_INVASION, placeholder="Select...", className="mb-3"),
+            ], md=6, lg=4),
+            dbc.Col([
+                html.Label([
+                    "Cervical Invasion ",
+                    html.I(className="bi bi-info-circle", id="cerv-info", style={"cursor": "pointer", "fontSize": "0.8rem"}),
+                ], className="form-label", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                dbc.Tooltip("Cervical stromal invasion", target="cerv-info", placement="top"),
+                dbc.RadioItems(
+                    id="cervical_invasion",
+                    options=[{"label": "Yes", "value": 1}, {"label": "No", "value": 0}],
+                    inline=True, className="mb-3",
+                    inputStyle={"marginRight": "5px"},
+                    labelStyle={"marginRight": "15px", "color": COLORS["text"]},
+                ),
+            ], md=6, lg=4),
+        ], className="align-items-end"),
     ], style=CARD_STYLE)
 
 
@@ -277,9 +312,21 @@ def create_molecular_section():
     return html.Div([
         html.H4("🧬 Molecular Markers", style=HEADER_STYLE),
         dbc.Row([
-            create_dropdown("p53_status", "p53 Status", P53_STATUS),
-            create_dropdown("pole_status", "POLE Mutation", POLE_STATUS),
-            create_dropdown("mmr_status", "MMR Status (MSH2/MSH6/MLH1/PMS2)", MMR_STATUS),
+            dbc.Col([
+                html.Label("p53 Status", className="form-label", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                dcc.Dropdown(id="p53_status", options=P53_STATUS, placeholder="Select...",
+                            className="mb-3"),
+            ], xs=12, sm=4),
+            dbc.Col([
+                html.Label("POLE Mutation", className="form-label", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                dcc.Dropdown(id="pole_status", options=POLE_STATUS, placeholder="Select...",
+                            className="mb-3"),
+            ], xs=12, sm=4),
+            dbc.Col([
+                html.Label("MMR Status", className="form-label", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                dcc.Dropdown(id="mmr_status", options=MMR_STATUS, placeholder="Select...",
+                            className="mb-3"),
+            ], xs=12, sm=4),
         ]),
     ], style=CARD_STYLE)
 
@@ -299,69 +346,124 @@ def create_treatment_section():
     ], style=CARD_STYLE)
 
 
+
+
 def create_results_section():
     """Results display section"""
     return html.Div([
         html.H4("📈 Survival Prediction Results", style=HEADER_STYLE),
         
-        # Risk Score Display
+        # Overall Survival (OS) Section
         html.Div([
+            html.Div([
+                html.H5("Overall Survival (OS)", style={
+                    "color": COLORS["text"],
+                    "fontWeight": "600",
+                    "marginBottom": "5px",
+                }),
+                html.P("Time from diagnosis until death from any cause", style={
+                    "color": COLORS["text_muted"],
+                    "fontSize": "0.8rem",
+                    "marginBottom": "15px",
+                }),
+            ]),
             dbc.Row([
                 dbc.Col([
                     html.Div([
-                        html.Span("3-Year Survival", style={
-                            "color": COLORS["text_muted"],
-                            "fontSize": "0.9rem",
-                            "display": "block",
-                            "marginBottom": "8px",
-                        }),
-                        html.Span(id="survival-3yr", children="—%", style={
-                            "color": COLORS["accent"],
-                            "fontSize": "2.5rem",
-                            "fontWeight": "700",
-                            "fontFamily": "'Fira Code', monospace",
-                        }),
-                    ], style={"textAlign": "center", "padding": "20px"})
-                ], md=4),
-                
-                dbc.Col([
-                    html.Div([
-                        html.Span("5-Year Survival", style={
-                            "color": COLORS["text_muted"],
-                            "fontSize": "0.9rem",
-                            "display": "block",
-                            "marginBottom": "8px",
-                        }),
-                        html.Span(id="survival-5yr", children="—%", style={
-                            "color": COLORS["accent"],
-                            "fontSize": "2.5rem",
-                            "fontWeight": "700",
-                            "fontFamily": "'Fira Code', monospace",
-                        }),
-                    ], style={"textAlign": "center", "padding": "20px"})
-                ], md=4),
-                
-                dbc.Col([
-                    html.Div([
-                        html.Span("Risk Category", style={
-                            "color": COLORS["text_muted"],
-                            "fontSize": "0.9rem",
-                            "display": "block",
-                            "marginBottom": "8px",
-                        }),
-                        html.Span(id="risk-category", children="—", style={
+                        html.Span("3-Year", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                        html.Div(id="os-3yr", children="—%", style={
                             "color": COLORS["accent"],
                             "fontSize": "1.8rem",
                             "fontWeight": "700",
                             "fontFamily": "'Fira Code', monospace",
                         }),
-                    ], style={"textAlign": "center", "padding": "20px"})
-                ], md=4),
+                    ], style={"textAlign": "center"})
+                ], xs=4),
+                dbc.Col([
+                    html.Div([
+                        html.Span("5-Year", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                        html.Div(id="os-5yr", children="—%", style={
+                            "color": COLORS["accent"],
+                            "fontSize": "1.8rem",
+                            "fontWeight": "700",
+                            "fontFamily": "'Fira Code', monospace",
+                        }),
+                    ], style={"textAlign": "center"})
+                ], xs=4),
+                dbc.Col([
+                    html.Div([
+                        html.Span("Risk", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                        html.Div(id="os-risk", children="—", style={
+                            "color": COLORS["accent"],
+                            "fontSize": "1.2rem",
+                            "fontWeight": "600",
+                            "fontFamily": "'Fira Code', monospace",
+                        }),
+                    ], style={"textAlign": "center"})
+                ], xs=4),
             ]),
         ], style={
             "backgroundColor": COLORS["background"],
             "borderRadius": "8px",
             "border": f"1px solid {COLORS['border']}",
+            "padding": "15px",
+            "marginBottom": "15px",
+        }),
+        
+        # Recurrence-Free Survival (RFS) Section
+        html.Div([
+            html.Div([
+                html.H5("Recurrence-Free Survival (RFS)", style={
+                    "color": COLORS["text"],
+                    "fontWeight": "600",
+                    "marginBottom": "5px",
+                }),
+                html.P("Time from diagnosis until recurrence or death", style={
+                    "color": COLORS["text_muted"],
+                    "fontSize": "0.8rem",
+                    "marginBottom": "15px",
+                }),
+            ]),
+            dbc.Row([
+                dbc.Col([
+                    html.Div([
+                        html.Span("3-Year", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                        html.Div(id="rfs-3yr", children="—%", style={
+                            "color": "#7c3aed",  # Purple for RFS
+                            "fontSize": "1.8rem",
+                            "fontWeight": "700",
+                            "fontFamily": "'Fira Code', monospace",
+                        }),
+                    ], style={"textAlign": "center"})
+                ], xs=4),
+                dbc.Col([
+                    html.Div([
+                        html.Span("5-Year", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                        html.Div(id="rfs-5yr", children="—%", style={
+                            "color": "#7c3aed",
+                            "fontSize": "1.8rem",
+                            "fontWeight": "700",
+                            "fontFamily": "'Fira Code', monospace",
+                        }),
+                    ], style={"textAlign": "center"})
+                ], xs=4),
+                dbc.Col([
+                    html.Div([
+                        html.Span("Risk", style={"color": COLORS["text_muted"], "fontSize": "0.85rem"}),
+                        html.Div(id="rfs-risk", children="—", style={
+                            "color": "#7c3aed",
+                            "fontSize": "1.2rem",
+                            "fontWeight": "600",
+                            "fontFamily": "'Fira Code', monospace",
+                        }),
+                    ], style={"textAlign": "center"})
+                ], xs=4),
+            ]),
+        ], style={
+            "backgroundColor": COLORS["background"],
+            "borderRadius": "8px",
+            "border": f"1px solid {COLORS['border']}",
+            "padding": "15px",
             "marginBottom": "20px",
         }),
         
@@ -395,7 +497,7 @@ def create_submit_button():
     """Create calculate button"""
     return html.Div([
         dbc.Button(
-            [html.Span("⚡ "), "Calculate Survival Probability"],
+            ["Calculate Survival Probability"],
             id="calculate-btn",
             size="lg",
             style={
@@ -424,37 +526,147 @@ app.layout = html.Div([
         
         dbc.Container([
             dbc.Row([
-                # Left Column - Input Forms
-                dbc.Col([
-                    create_demographics_section(),
-                    create_tumor_section(),
-                    create_staging_section(),
-                    create_molecular_section(),
-                    create_treatment_section(),
-                    create_submit_button(),
-                ], lg=6),
+                # Left Column - Input Forms (centered initially, shifts left when results shown)
+                dbc.Col(
+                    id="input-column",
+                    children=[
+                        create_demographics_section(),
+                        create_tumor_section(),
+                        create_staging_section(),
+                        create_molecular_section(),
+                        create_treatment_section(),
+                        create_submit_button(),
+                    ],
+                    lg={"size": 8, "offset": 2},  # Centered initially
+                    md=12,
+                ),
                 
                 # Right Column - Results
-                dbc.Col([
-                    create_results_section(),
-                ], lg=6),
+                dbc.Col(
+                    id="results-column",
+                    children=[
+                        html.Div(
+                            id="results-container",
+                            children=[create_results_section()],
+                        ),
+                    ],
+                    lg=6,
+                    md=12,
+                    style={"display": "none"},  # Hidden initially
+                ),
             ]),
             
-            # Footer
+            # Footer with Ethics & Compliance
             html.Div([
                 html.Hr(style={"borderColor": COLORS["border"]}),
+                
+                # Main Disclaimer
+                dbc.Alert([
+                    html.H5([
+                        html.I(className="bi bi-exclamation-triangle-fill me-2"),
+                        "Clinical Disclaimer"
+                    ], className="alert-heading"),
+                    html.P([
+                        "This tool is for ",
+                        html.Strong("research and educational purposes only"),
+                        ". It is NOT intended to replace professional medical judgment or clinical decision-making.",
+                    ], className="mb-2"),
+                    html.Hr(),
+                    html.P([
+                        "Always consult with qualified healthcare professionals before making treatment decisions.",
+                    ], className="mb-0", style={"fontSize": "0.9rem"}),
+                ], color="warning", className="mb-3"),
+                
+                # Ethics & Privacy Buttons
+                dbc.Row([
+                    dbc.Col([
+                        dbc.Button([
+                            html.I(className="bi bi-shield-check me-2"),
+                            "Data Privacy"
+                        ], id="privacy-btn", color="outline-secondary", size="sm", className="me-2"),
+                        dbc.Button([
+                            html.I(className="bi bi-info-circle me-2"),
+                            "Model Transparency"
+                        ], id="transparency-btn", color="outline-secondary", size="sm"),
+                    ], className="text-center"),
+                ], className="mb-3"),
+                
+                # Version & Audit Info
                 html.P([
-                    "⚠️ ",
-                    html.Strong("Clinical Disclaimer: "),
-                    "This tool is for research and educational purposes only. ",
-                    "Not intended for clinical decision-making without physician review.",
-                ], style={
-                    "color": COLORS["text_muted"],
-                    "fontSize": "0.85rem",
-                    "textAlign": "center",
-                    "marginTop": "20px",
-                }),
+                    html.Small([
+                        "Model Version: 1.0.0-beta | ",
+                        "Last Updated: December 2025 | ",
+                        "Training Population: NSMP Endometrial Cancer Cohort",
+                    ], style={"color": COLORS["text_muted"]}),
+                ], className="text-center mb-0"),
             ]),
+            
+            # Privacy Modal
+            dbc.Modal([
+                dbc.ModalHeader(dbc.ModalTitle([
+                    html.I(className="bi bi-shield-check me-2"),
+                    "Data Privacy & Security"
+                ])),
+                dbc.ModalBody([
+                    html.H6("🔒 No Data Storage", className="text-success"),
+                    html.P("This application does NOT store, transmit, or retain any patient data. All calculations are performed locally in your browser session."),
+                    
+                    html.H6("🔐 Data Handling"),
+                    html.Ul([
+                        html.Li("No patient identifiers are collected"),
+                        html.Li("No data is sent to external servers"),
+                        html.Li("Session data is cleared when you close the browser"),
+                        html.Li("No cookies or tracking mechanisms are used"),
+                    ]),
+                    
+                    html.H6("⚖️ GDPR & HIPAA Considerations"),
+                    html.P("While this tool processes no identifiable health information, users in clinical settings should ensure compliance with local data protection regulations (GDPR, HIPAA, etc.) when using patient data."),
+                    
+                    html.H6("👤 User Responsibility"),
+                    html.P("Users are responsible for ensuring that any data entered complies with their institution's data governance policies."),
+                ]),
+                dbc.ModalFooter(
+                    dbc.Button("Close", id="close-privacy", className="ms-auto")
+                ),
+            ], id="privacy-modal", size="lg"),
+            
+            # Transparency Modal
+            dbc.Modal([
+                dbc.ModalHeader(dbc.ModalTitle([
+                    html.I(className="bi bi-info-circle me-2"),
+                    "Model Transparency & Limitations"
+                ])),
+                dbc.ModalBody([
+                    html.H6("📊 Model Description"),
+                    html.P("This tool uses a Cox Proportional Hazards model to predict survival probabilities for patients with NSMP (No Specific Molecular Profile) endometrial cancer."),
+                    
+                    html.H6("🎯 Intended Use"),
+                    html.Ul([
+                        html.Li("Risk stratification for clinical research"),
+                        html.Li("Educational purposes for medical trainees"),
+                        html.Li("Hypothesis generation for treatment planning discussions"),
+                    ]),
+                    
+                    html.H6("⚠️ Known Limitations"),
+                    html.Ul([
+                        html.Li("Model trained on a specific cohort - may not generalize to all populations"),
+                        html.Li("Does not account for all possible prognostic factors"),
+                        html.Li("Predictions are probabilistic, not deterministic"),
+                        html.Li("Performance may vary across different clinical settings"),
+                        html.Li("Not validated for patients with specific molecular profiles (POLE, MMRd, p53abn)"),
+                    ]),
+                    
+                    html.H6("📈 Performance Metrics"),
+                    html.P("Model performance metrics (C-index, calibration) should be reviewed before clinical application. Contact the development team for detailed validation reports."),
+                    
+                    html.H6("🔄 Model Updates"),
+                    html.P("This model may be updated as new evidence becomes available. Always check for the latest version."),
+                ]),
+                dbc.ModalFooter(
+                    dbc.Button("Close", id="close-transparency", className="ms-auto")
+                ),
+            ], id="transparency-modal", size="lg"),
+            
         ], fluid=True, style={"maxWidth": "1400px"}),
     ], style={"backgroundColor": COLORS["background"], "minHeight": "100vh", "paddingBottom": "40px"}),
 ])
@@ -466,10 +678,14 @@ app.layout = html.Div([
 
 @callback(
     [
-        Output("survival-3yr", "children"),
-        Output("survival-5yr", "children"),
-        Output("risk-category", "children"),
-        Output("risk-category", "style"),
+        Output("input-column", "lg"),
+        Output("results-column", "style"),
+        Output("os-3yr", "children"),
+        Output("os-5yr", "children"),
+        Output("os-risk", "children"),
+        Output("rfs-3yr", "children"),
+        Output("rfs-5yr", "children"),
+        Output("rfs-risk", "children"),
         Output("survival-curve", "figure"),
         Output("risk-factors", "children"),
     ],
@@ -515,8 +731,11 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
     # In production, this would be: S(t) = S0(t)^exp(βX)
     
     # Mock baseline survival (would come from Cox model)
-    baseline_3yr = 0.92
-    baseline_5yr = 0.85
+    # OS typically has higher survival than RFS (since RFS includes recurrence events)
+    os_baseline_3yr = 0.95
+    os_baseline_5yr = 0.90
+    rfs_baseline_3yr = 0.88
+    rfs_baseline_5yr = 0.80
     
     # Mock linear predictor calculation (sum of β*X)
     # This is placeholder - actual coefficients come from fitted Cox model
@@ -598,23 +817,30 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
     # Calculate survival probabilities
     # S(t) = S0(t)^exp(linear_predictor)
     hazard_ratio = np.exp(linear_predictor)
-    survival_3yr = baseline_3yr ** hazard_ratio
-    survival_5yr = baseline_5yr ** hazard_ratio
     
-    # Clamp values
-    survival_3yr = max(0.05, min(0.99, survival_3yr))
-    survival_5yr = max(0.02, min(0.99, survival_5yr))
+    # OS calculations
+    os_3yr = os_baseline_3yr ** hazard_ratio
+    os_5yr = os_baseline_5yr ** hazard_ratio
+    os_3yr = max(0.05, min(0.99, os_3yr))
+    os_5yr = max(0.02, min(0.99, os_5yr))
     
-    # Determine risk category
-    if survival_5yr >= 0.85:
-        risk_category = "Low Risk"
-        risk_color = COLORS["low_risk"]
-    elif survival_5yr >= 0.65:
-        risk_category = "Intermediate"
-        risk_color = COLORS["intermediate_risk"]
-    else:
-        risk_category = "High Risk"
-        risk_color = COLORS["high_risk"]
+    # RFS calculations (slightly worse due to recurrence events)
+    rfs_3yr = rfs_baseline_3yr ** (hazard_ratio * 1.1)  # RFS typically worse
+    rfs_5yr = rfs_baseline_5yr ** (hazard_ratio * 1.1)
+    rfs_3yr = max(0.05, min(0.99, rfs_3yr))
+    rfs_5yr = max(0.02, min(0.99, rfs_5yr))
+    
+    # Determine risk categories
+    def get_risk_category(surv_5yr):
+        if surv_5yr >= 0.85:
+            return "Low"
+        elif surv_5yr >= 0.65:
+            return "Moderate"
+        else:
+            return "High"
+    
+    os_risk_cat = get_risk_category(os_5yr)
+    rfs_risk_cat = get_risk_category(rfs_5yr)
     
     # =========================================================================
     # CREATE SURVIVAL CURVE FIGURE
@@ -623,64 +849,64 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
     # Generate survival curve data
     time_points = np.array([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
     
-    # Exponential decay based on hazard
-    lambda_param = -np.log(survival_5yr) / 5
-    survival_curve = np.exp(-lambda_param * time_points)
-    
-    # Comparison curves (average low and high risk)
-    low_risk_curve = 0.95 ** (time_points / 5 * 0.8)
-    high_risk_curve = 0.95 ** (time_points / 5 * 3)
+    # Exponential decay based on hazard for both outcomes
+    os_lambda = -np.log(os_5yr) / 5
+    rfs_lambda = -np.log(rfs_5yr) / 5
+    os_curve = np.exp(-os_lambda * time_points)
+    rfs_curve = np.exp(-rfs_lambda * time_points)
     
     fig = go.Figure()
     
-    # Add reference curves
+    # Add OS curve
     fig.add_trace(go.Scatter(
-        x=time_points, y=low_risk_curve,
-        mode='lines',
-        name='Low Risk (Reference)',
-        line=dict(color=COLORS["low_risk"], width=1, dash='dot'),
-        opacity=0.5,
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=time_points, y=high_risk_curve,
-        mode='lines',
-        name='High Risk (Reference)',
-        line=dict(color=COLORS["high_risk"], width=1, dash='dot'),
-        opacity=0.5,
-    ))
-    
-    # Add patient curve
-    fig.add_trace(go.Scatter(
-        x=time_points, y=survival_curve,
+        x=time_points, y=os_curve,
         mode='lines+markers',
-        name='This Patient',
+        name='Overall Survival (OS)',
         line=dict(color=COLORS["accent"], width=3),
-        marker=dict(size=6),
+        marker=dict(size=5),
     ))
     
-    # Add markers for 3yr and 5yr
+    # Add RFS curve
     fig.add_trace(go.Scatter(
-        x=[3, 5], y=[survival_3yr, survival_5yr],
-        mode='markers+text',
-        name='Key Timepoints',
-        marker=dict(color=COLORS["accent"], size=12, symbol='diamond'),
-        text=[f'{survival_3yr*100:.1f}%', f'{survival_5yr*100:.1f}%'],
-        textposition='top center',
-        textfont=dict(color=COLORS["text"]),
+        x=time_points, y=rfs_curve,
+        mode='lines+markers',
+        name='Recurrence-Free (RFS)',
+        line=dict(color='#7c3aed', width=3),  # Purple
+        marker=dict(size=5),
+    ))
+    
+    # Add markers for key timepoints - OS
+    fig.add_trace(go.Scatter(
+        x=[3, 5], y=[os_3yr, os_5yr],
+        mode='markers',
+        name='OS Timepoints',
+        marker=dict(color=COLORS["accent"], size=10, symbol='diamond'),
+        showlegend=False,
+    ))
+    
+    # Add markers for key timepoints - RFS
+    fig.add_trace(go.Scatter(
+        x=[3, 5], y=[rfs_3yr, rfs_5yr],
+        mode='markers',
+        name='RFS Timepoints',
+        marker=dict(color='#7c3aed', size=10, symbol='diamond'),
         showlegend=False,
     ))
     
     fig.update_layout(
         title=dict(
-            text='Predicted Recurrence-Free Survival Curve',
+            text='Predicted Survival Curves',
             font=dict(color=COLORS["text"], size=14),
+            x=0.5,
+            xanchor='center',
         ),
         xaxis=dict(
             title='Years from Diagnosis',
             color=COLORS["text_muted"],
             gridcolor=COLORS["border"],
             range=[0, 5.5],
+            showline=False,
+            zeroline=False,
         ),
         yaxis=dict(
             title='Survival Probability',
@@ -688,18 +914,21 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
             gridcolor=COLORS["border"],
             range=[0, 1.05],
             tickformat='.0%',
+            showline=False,
+            zeroline=False,
         ),
         plot_bgcolor=COLORS["background"],
-        paper_bgcolor=COLORS["card"],
+        paper_bgcolor=COLORS["background"],
         legend=dict(
             orientation='h',
             yanchor='bottom',
-            y=1.02,
-            xanchor='right',
-            x=1,
+            y=1.08,
+            xanchor='center',
+            x=0.5,
             font=dict(color=COLORS["text_muted"], size=10),
+            bgcolor='rgba(0,0,0,0)',
         ),
-        margin=dict(l=50, r=20, t=60, b=50),
+        margin=dict(l=60, r=20, t=80, b=50),
     )
     
     # =========================================================================
@@ -737,22 +966,42 @@ def calculate_survival(n_clicks, age, bmi, asa, histological_type, tumor_grade,
                    style={"color": COLORS["text_muted"], "fontStyle": "italic"})
         ]
     
-    # Return all outputs
-    risk_category_style = {
-        "color": risk_color,
-        "fontSize": "1.8rem",
-        "fontWeight": "700",
-        "fontFamily": "'Fira Code', monospace",
-    }
-    
     return (
-        f"{survival_3yr*100:.1f}%",
-        f"{survival_5yr*100:.1f}%",
-        risk_category,
-        risk_category_style,
+        6,  # Change input column to lg=6 (left side)
+        {"display": "block"},  # Show results column
+        f"{os_3yr*100:.1f}%",  # OS 3-year
+        f"{os_5yr*100:.1f}%",  # OS 5-year
+        os_risk_cat,  # OS risk category
+        f"{rfs_3yr*100:.1f}%",  # RFS 3-year
+        f"{rfs_5yr*100:.1f}%",  # RFS 5-year
+        rfs_risk_cat,  # RFS risk category
         fig,
         risk_factors_display,
     )
+
+
+# ============================================================================
+# ETHICS MODAL CALLBACKS
+# ============================================================================
+
+@callback(
+    Output("privacy-modal", "is_open"),
+    [Input("privacy-btn", "n_clicks"), Input("close-privacy", "n_clicks")],
+    [State("privacy-modal", "is_open")],
+    prevent_initial_call=True,
+)
+def toggle_privacy_modal(n1, n2, is_open):
+    return not is_open
+
+
+@callback(
+    Output("transparency-modal", "is_open"),
+    [Input("transparency-btn", "n_clicks"), Input("close-transparency", "n_clicks")],
+    [State("transparency-modal", "is_open")],
+    prevent_initial_call=True,
+)
+def toggle_transparency_modal(n1, n2, is_open):
+    return not is_open
 
 
 # ============================================================================

@@ -10,5 +10,5 @@
 
 - [ ] Create validation module for cross-validation and metrics
 
-- [ ] Create Streamlit app for the risk calculator
+- [x] Create app for the risk calculator
 
