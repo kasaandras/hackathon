@@ -84,37 +84,6 @@
 
 ---
 
-## Python Feature List
-
-```python
-selected_features = [
-    # Demographics
-    'edad', 'imc', 'asa',
-    
-    # Tumor characteristics
-    'tipo_histologico', 'Grado', 'histo_defin', 'grado_histologi',
-    'tamano_tumoral', 'afectacion_linf', 'infiltracion_mi', 'infilt_estr_cervix',
-    
-    # Staging & Risk
-    'grupo_riesgo', 'estadiaje_pre_i', 'FIGO2023', 'grupo_de_riesgo_definitivo',
-    
-    # Molecular
-    'p53_ihq', 'p53_molecular', 'mut_pole', 'msh2', 'msh6', 'pms2', 'mlh1', 'beta_cateninap',
-    
-    # Treatment
-    'tto_NA', 'tto_1_quirugico', 'bqt', 'qt', 'Tributaria_a_Radioterapia',
-    
-    # Surgical
-    'abordajeqx', 'tc_gc', 'AP_centinela_pelvico'
-]
-
-# Targets
-target_event = 'recidiva'
-target_time = 'diferencia_dias_reci_exit'
-```
-
----
-
 ## Excluded Features (>50% missing or not useful)
 
 - `valor_de_ca125` (87% missing)
