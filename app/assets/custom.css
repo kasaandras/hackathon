@@ -1,0 +1,109 @@
+/* Custom CSS for Endometrial Cancer Risk Calculator */
+
+/* Dark dropdown styling */
+.dash-dropdown-dark .Select-control {
+    background-color: #0a0f1a !important;
+    border-color: #2a3a5a !important;
+}
+
+.dash-dropdown-dark .Select-menu-outer {
+    background-color: #121a2e !important;
+    border-color: #2a3a5a !important;
+}
+
+.dash-dropdown-dark .Select-option {
+    background-color: #121a2e !important;
+    color: #e8e8e8 !important;
+}
+
+.dash-dropdown-dark .Select-option:hover {
+    background-color: #2a3a5a !important;
+}
+
+.dash-dropdown-dark .Select-value-label {
+    color: #e8e8e8 !important;
+}
+
+.dash-dropdown-dark .Select-placeholder {
+    color: #8892a0 !important;
+}
+
+/* Dash 2.x dropdown styling */
+.dash-dropdown .Select-control,
+.dash-dropdown-dark .Select-control,
+.Select-control {
+    background-color: #0a0f1a !important;
+    border-color: #2a3a5a !important;
+    color: #e8e8e8 !important;
+}
+
+.Select-menu-outer,
+.dash-dropdown .Select-menu-outer {
+    background-color: #121a2e !important;
+    border-color: #2a3a5a !important;
+}
+
+.Select-option,
+.dash-dropdown .Select-option {
+    background-color: #121a2e !important;
+    color: #e8e8e8 !important;
+}
+
+.Select-option.is-focused,
+.Select-option:hover {
+    background-color: #2a3a5a !important;
+}
+
+.Select-value-label,
+.Select-placeholder {
+    color: #e8e8e8 !important;
+}
+
+/* Calculate button hover */
+.calculate-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 212, 170, 0.5) !important;
+}
+
+/* Body font */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #0a0f1a;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0f1a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #2a3a5a;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3a4a6a;
+}
+
+/* Radio button styling */
+.form-check-input:checked {
+    background-color: #00d4aa !important;
+    border-color: #00d4aa !important;
+}
+
+/* Input field styling */
+.form-control:focus {
+    border-color: #00d4aa !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 212, 170, 0.25) !important;
+}
+
+/* Card hover effect */
+.card-hover:hover {
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+
