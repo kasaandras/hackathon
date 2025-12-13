@@ -1,0 +1,5 @@
+removed_feature,reason
+msh6,High VIF or correlation
+p53_immunohistochemistry,High VIF or correlation
+mlh1,High VIF or correlation
+msh2,High VIF or correlation

@@ -1,0 +1,37 @@
+variable,type,action,n_features,missing_pct
+age_at_diagnosis,continuous,kept as-is,1,0.0
+bmi,continuous,kept as-is,1,4.968944099378882
+ca125_value,continuous,kept as-is,1,86.95652173913044
+surgery_time,continuous,kept as-is,1,15.527950310559005
+blood_loss_cc,continuous,kept as-is,1,47.82608695652174
+hospital_stay_days,continuous,kept as-is,1,14.285714285714285
+tumor_size,continuous,kept as-is,1,18.633540372670808
+total_sentinel_nodes,continuous,kept as-is,1,17.391304347826086
+affected_sentinel_nodes,continuous,kept as-is,1,19.25465838509317
+estrogen_receptor_percentage,continuous,kept as-is,1,44.099378881987576
+progesterone_receptor_percentage,continuous,kept as-is,1,45.3416149068323
+distant_metastasis,binary,kept as 0/1,1,1.8633540372670807
+neoadjuvant_treatment,binary,kept as 0/1,1,0.0
+lymphovascular_invasion,binary,kept as 0/1,1,11.180124223602485
+indication_radiotherapy,binary,kept as 0/1,1,4.968944099378882
+brachytherapy,binary,kept as 0/1,1,5.590062111801243
+chemotherapy,binary,kept as 0/1,1,6.211180124223603
+p53_molecular,binary,kept as 0/1,1,8.074534161490684
+p53_immunohistochemistry,binary,kept as 0/1,1,5.590062111801243
+pole_mutation,binary,kept as 0/1,1,8.695652173913043
+msh2,binary,kept as 0/1,1,4.3478260869565215
+msh6,binary,kept as 0/1,1,4.3478260869565215
+pms2,binary,kept as 0/1,1,5.590062111801243
+mlh1,binary,kept as 0/1,1,6.211180124223603
+tumor_grade_preop,ordinal,label encoded (161 mapped),1,0.0
+final_grade,ordinal,label encoded (144 mapped),1,10.559006211180124
+asa_score,ordinal,label encoded (133 mapped),1,11.801242236024844
+preoperative_risk_group,ordinal,label encoded (159 mapped),1,1.2422360248447204
+final_risk_group,ordinal,label encoded (142 mapped),1,11.801242236024844
+myometrial_invasion,ordinal,label encoded (144 mapped),1,10.559006211180124
+final_histology,nominal,one-hot encoded (8 features),8,7.453416149068323
+primary_surgery_type,nominal,one-hot encoded (1 features),1,2.484472049689441
+preoperative_staging,nominal,one-hot encoded (2 features),2,1.8633540372670807
+myometrial_invasion_preop_subjective,nominal,one-hot encoded (3 features),3,0.6211180124223602
+myometrial_invasion_preop_objective,nominal,one-hot encoded (3 features),3,3.7267080745341614
+sentinel_node_pathology,nominal,one-hot encoded (4 features),4,18.633540372670808
