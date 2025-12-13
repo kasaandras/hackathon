@@ -157,6 +157,44 @@ class CoxPHModel(SurvivalModel):
         return summary[["exp(coef)", "exp(coef) lower 95%", "exp(coef) upper 95%", "p"]]
 
 
+def train_cox_model(
+    df: pd.DataFrame,
+    duration_col: str,
+    event_col: str,
+    feature_cols: Optional[List[str]] = None,
+    penalizer: float = 0.1,
+    l1_ratio: float = 0.0
+) -> CoxPHModel:
+    """
+    Convenience function to train a CoxPHModel.
+    """
+    model = CoxPHModel(penalizer=penalizer, l1_ratio=l1_ratio)
+    model.fit(
+        df=df,
+        duration_col=duration_col,
+        event_col=event_col,
+        feature_cols=feature_cols
+    )
+    return model
+
+
+def predict_with_cox_model(
+    model: CoxPHModel,
+    df: pd.DataFrame,
+    times: Optional[List[float]] = None
+) -> Dict[str, Any]:
+    """
+    Predict risk scores and survival probabilities using a fitted Cox model.
+    """
+    risk_scores = model.predict_risk(df)
+    survival_probabilities = model.predict_survival_function(df, times=times)
+    return {
+        "risk_scores": risk_scores,
+        "survival_probabilities": survival_probabilities,
+        "times": times,
+    }
+
+
 class LogisticRiskModel(SurvivalModel):
     """
     Logistic Regression model for binary outcome prediction.

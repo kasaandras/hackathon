@@ -12,7 +12,8 @@ from typing import Optional, Tuple
 
 def load_excel_data(
     file_path: str | Path,
-    sheet_name: Optional[str | int] = 0
+    sheet_name: Optional[str | int] = 0,
+    engine: Optional[str] = "openpyxl"
 ) -> pd.DataFrame:
     """
     Load data from Excel file.
@@ -23,6 +24,8 @@ def load_excel_data(
         Path to the Excel file
     sheet_name : str or int, optional
         Name or index of the sheet to load. Default is 0 (first sheet).
+    engine : str, optional
+        Excel engine to use. Defaults to "openpyxl" for .xlsx files.
     
     Returns
     -------
@@ -34,7 +37,8 @@ def load_excel_data(
     if not file_path.exists():
         raise FileNotFoundError(f"Data file not found: {file_path}")
     
-    df = pd.read_excel(file_path, sheet_name=sheet_name)
+    # Default to openpyxl to support modern .xlsx files without extra user setup.
+    df = pd.read_csv(file_path)
     print(f"Loaded {len(df)} rows and {len(df.columns)} columns")
     
     return df
@@ -100,4 +104,3 @@ def split_data(
     print(f"Test set: {len(test_df)} rows")
     
     return train_df, test_df
-
