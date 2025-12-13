@@ -1,0 +1,27 @@
+# Endometrial Cancer Survival Risk Model
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+openpyxl>=3.1.0  # For reading Excel files
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.15.0
+
+# Survival analysis
+lifelines>=0.27.0
+
+# Machine learning
+scikit-learn>=1.3.0
+scipy>=1.10.0
+
+# Web application
+streamlit>=1.28.0
+
+# Statistical analysis
+statsmodels>=0.14.0
+
+# Utilities
+joblib>=1.3.0
+
