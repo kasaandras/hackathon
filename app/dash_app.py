@@ -1102,6 +1102,7 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
     # VALIDATION - Check required fields
     # =========================================================================
     required_fields = {
+        'Tumor Size': tumor_size,
         'Preop Tumor Grade': tumor_grade_preop,
         'Final Tumor Grade': final_grade,
         'Preoperative Risk Group': preop_risk_group,
