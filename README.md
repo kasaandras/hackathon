@@ -30,16 +30,19 @@ hackathon/
 │   ├── modeling.py              # Cox PH model implementation
 │   ├── survival_analysis.py     # Survival analysis functions
 │   └── validation.py            # Model validation utilities
+├── preprocessing/
+│   ├── 02_preproccesing.py      # Main preprocessing script
+│   ├── 02b_oversampliong.py     # Oversampling pipeline
+│   ├── 02c_overs_check.py        # Oversampling validation
+│   ├── 03_encoding.py            # Feature encoding
+│   └── fix_sparse_features.py    # Sparse feature handling
 ├── models/
 │   ├── cox_model_os.pkl         # Trained OS model
-│   └── cox_model_recurrent.pkl # Trained RFS model
+│   └── cox_model_recurrent.pkl  # Trained RFS model
 ├── corrected_preprocessing_output/  # Preprocessed datasets
 ├── balanced_survival_output/       # SMOTE-balanced datasets
 ├── model_evaluation_plots/         # Model evaluation visualizations
 ├── cv_results/                     # Cross-validation results
-├── 02_preproccesing.py             # Main preprocessing script
-├── 02b_oversampliong.py            # Oversampling pipeline
-├── 03_encoding.py                  # Feature encoding
 ├── run_survival_analysis.py        # Model training/validation runner
 ├── evaluate_survival_models.py     # Model evaluation script
 └── requirements.txt                # Python dependencies
@@ -148,7 +151,7 @@ python run_survival_analysis.py --mode validation \
 Run the preprocessing pipeline:
 
 ```bash
-python 02_preproccesing.py
+python preprocessing/02_preproccesing.py
 ```
 
 This will:
@@ -253,7 +256,7 @@ Preprocessed datasets include:
    - Add human-readable label to `FEATURE_LABELS`
    - Create input component in `create_common_inputs()` or model-specific functions
 
-2. Update preprocessing in `02_preproccesing.py`:
+2. Update preprocessing in `preprocessing/02_preproccesing.py`:
    - Add feature extraction logic
    - Update encoding/transformation steps
 
