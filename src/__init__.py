@@ -1,10 +1,3 @@
-"""
-Endometrial Cancer Survival Risk Model
-=======================================
-
-A machine learning pipeline for predicting survival risk in endometrial cancer patients.
-"""
-
 from . import data_loader
 from . import preprocessing
 from . import modeling

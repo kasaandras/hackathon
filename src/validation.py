@@ -1,9 +1,3 @@
-"""
-Validation Module
-=================
-
-Cross-validation and model evaluation metrics for survival analysis.
-"""
 
 import pandas as pd
 import numpy as np
@@ -73,10 +67,8 @@ def evaluate_survival_model(
     Dict[str, float]
         Dictionary of evaluation metrics
     """
-    # Get predictions
+ 
     risk_scores = model.predict_risk(test_df)
-    
-    # Calculate C-index
     c_index = concordance_index(
         test_df[duration_col].values,
         risk_scores,
@@ -176,11 +168,11 @@ def cross_validate_survival(
         train_df = model_df.iloc[train_idx]
         test_df = model_df.iloc[test_idx]
         
-        # Fit model
+  
         model = model_class(**model_kwargs)
         model.fit(train_df, duration_col, event_col, feature_cols)
         
-        # Evaluate
+
         metrics = evaluate_survival_model(model, test_df, duration_col, event_col)
         c_indices.append(metrics["c_index"])
         
@@ -247,15 +239,15 @@ def cross_validate_classification(
         X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
         y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
         
-        # Fit model
+     
         model = model_class(**model_kwargs)
         model.fit(X_train, y_train, feature_cols)
         
-        # Predict
+ 
         y_pred = model.predict(X_test)
         y_pred_proba = model.predict_proba(X_test)
         
-        # Evaluate
+
         metrics = evaluate_classification_model(y_test, y_pred, y_pred_proba)
         
         for key in all_metrics:

@@ -1,10 +1,3 @@
-"""
-Data Loading Module
-===================
-
-Functions for loading and initial exploration of the endometrial cancer dataset.
-"""
-
 import pandas as pd
 from pathlib import Path
 from typing import Optional, Tuple
@@ -30,8 +23,7 @@ def load_excel_data(
     
     if not file_path.exists():
         raise FileNotFoundError(f"Data file not found: {file_path}")
-    
-    # Default to openpyxl to support modern .xlsx files without extra user setup.
+
     df = pd.read_csv(file_path)
     print(f"Loaded {len(df)} rows and {len(df.columns)} columns")
     

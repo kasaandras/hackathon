@@ -1,18 +1,6 @@
-"""
-Endometrial Cancer Survival Risk Calculator - Dash Application
-==============================================================
-
-A clinical decision support tool for predicting:
-- Overall Survival (OS)
-- Recurrence-Free Survival (RFS)
-
-Uses Cox Proportional Hazards models trained on NSMP endometrial cancer cohort.
-"""
-
 import sys
 from pathlib import Path
 
-# Add project root to Python path for model loading
 _APP_DIR = Path(__file__).parent.resolve()
 _PROJECT_DIR = _APP_DIR.parent
 if str(_PROJECT_DIR) not in sys.path:
@@ -26,9 +14,8 @@ import numpy as np
 import pandas as pd
 import joblib
 
-# ============================================================================
 # APP INITIALIZATION
-# ============================================================================
+
 
 app = dash.Dash(
     __name__,
@@ -41,7 +28,7 @@ app = dash.Dash(
 )
 app.title = "NSMP Endometrial Cancer Survival Calculator"
 
-# Add custom CSS to fix dropdown text truncation
+
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -126,11 +113,6 @@ app.index_string = '''
 </html>
 '''
 
-# ============================================================================
-# LOAD MODELS AND DATA
-# ============================================================================
-
-# Use paths defined above
 MODEL_DIR = _PROJECT_DIR / "models"
 DATA_DIR = _PROJECT_DIR / "corrected_preprocessing_output"
 
@@ -150,16 +132,15 @@ try:
     os_train_data = pd.read_csv(DATA_DIR / "overall_survival_final_cleaned_no_sparse.csv")
     rfs_train_data = pd.read_csv(DATA_DIR / "recurrence_free_survival_final_cleaned_no_sparse.csv")
     
-    # Calculate medians for imputation
+   
     OS_MEDIANS = os_train_data.drop(columns=['os_time', 'os_event']).median().to_dict()
     RFS_MEDIANS = rfs_train_data.drop(columns=['rfs_time', 'rfs_event']).median().to_dict()
     
-    # Calculate risk score quantiles (for risk grouping)
+   
     if MODELS_LOADED:
         os_features = os_model.feature_names
         rfs_features = rfs_model.feature_names
-        
-        # Use model's predict_risk method to ensure scaling is applied if needed
+      
         os_risk_scores = os_model.predict_risk(os_train_data[os_features])
         rfs_risk_scores = rfs_model.predict_risk(rfs_train_data[rfs_features])
         
@@ -182,11 +163,6 @@ except Exception as e:
     OS_RISK_QUANTILES = {'low': 0.5, 'high': 2.0}
     RFS_RISK_QUANTILES = {'low': 0.5, 'high': 2.0}
 
-# ============================================================================
-# FEATURE MAPPINGS
-# ============================================================================
-
-# OS Model Features (16 features)
 OS_FEATURES = [
     'final_histology_2.0', 'tumor_grade_preop_encoded', 'distant_metastasis',
     'preoperative_risk_group_encoded', 'primary_surgery_type_1.0', 'preoperative_staging_2.0',
@@ -195,7 +171,6 @@ OS_FEATURES = [
     'myometrial_invasion_preop_objective_4.0', 'myometrial_invasion_preop_subjective_2.0'
 ]
 
-# RFS Model Features (20 features)
 RFS_FEATURES = [
     'tumor_grade_preop_encoded', 'preoperative_risk_group_encoded', 'final_grade_encoded',
     'final_risk_group_encoded', 'chemotherapy', 'sentinel_node_pathology_4.0',
@@ -206,7 +181,6 @@ RFS_FEATURES = [
     'preoperative_staging_1.0', 'final_histology_9.0'
 ]
 
-# Human-readable labels for features
 FEATURE_LABELS = {
     'tumor_size': 'Tumor Size (cm)',
     'bmi': 'BMI (kg/m²)',
@@ -231,10 +205,6 @@ FEATURE_LABELS = {
     'indication_radiotherapy': 'Radiotherapy Indicated',
     'pms2': 'PMS2 Expression Loss',
 }
-
-# ============================================================================
-# STYLING
-# ============================================================================
 
 COLORS = {
     "background": "#f8f9fa",
@@ -266,9 +236,6 @@ HEADER_STYLE = {
     "fontSize": "1.1rem",
 }
 
-# ============================================================================
-# DROPDOWN OPTIONS
-# ============================================================================
 
 TUMOR_GRADES = [
     {"label": "G1 - Well differentiated", "value": 1},
@@ -276,14 +243,12 @@ TUMOR_GRADES = [
     {"label": "G3 - Poorly differentiated", "value": 3},
 ]
 
-# Preoperative Risk Group (3 clinical levels)
 PREOP_RISK_GROUPS = [
     {"label": "Low Risk", "value": 1},
     {"label": "Intermediate Risk", "value": 2},
     {"label": "High Risk", "value": 3},
 ]
 
-# Final Risk Group (5 clinical levels - ESMO/ESGO/ESTRO classification)
 FINAL_RISK_GROUPS = [
     {"label": "Low Risk", "value": 1},
     {"label": "Intermediate Risk", "value": 2},
@@ -292,8 +257,6 @@ FINAL_RISK_GROUPS = [
     {"label": "Advanced", "value": 5},
 ]
 
-# All clinical histology types - only Serous and Carcinosarcoma have model coefficients
-# All others are treated as baseline (Endometrioid) by the model
 HISTOLOGY_OPTIONS = [
     {"label": "Atypical Hyperplasia", "value": "atypical_hyperplasia"},
     {"label": "Endometrioid Carcinoma", "value": "endometrioid"},
@@ -310,16 +273,13 @@ HISTOLOGY_OPTIONS = [
     {"label": "Others", "value": "others"},
 ]
 
-# Preoperative Staging (3 clinical categories)
-# Model uses binary encoding: Stage I (1) vs Stage II+ (2+)
+
 STAGING_OPTIONS = [
     {"label": "Stage I", "value": 1},
     {"label": "Stage II", "value": 2},
     {"label": "Stage III-IV", "value": 3},
 ]
 
-# Myometrial Invasion (4 clinical categories)
-# Model uses binary: <50% (0) vs ≥50% (1)
 MYOMETRIAL_INVASION_OPTIONS = [
     {"label": "Not Applicable", "value": 0},
     {"label": "< 50% invasion", "value": 1},
@@ -327,14 +287,11 @@ MYOMETRIAL_INVASION_OPTIONS = [
     {"label": "Not Assessable", "value": 3},
 ]
 
-# Primary Surgery Type
 SURGERY_TYPE_OPTIONS = [
     {"label": "No", "value": 0},
     {"label": "Yes", "value": 1},
 ]
 
-# Sentinel Node Status (5 clinical categories)
-# Model uses binary encoding: sentinel_node_pathology_4.0 (Macrometastasis)
 SENTINEL_NODE_OPTIONS = [
     {"label": "Negative", "value": 0},
     {"label": "Isolated Tumor Cells (ITC)", "value": 1},
@@ -343,8 +300,7 @@ SENTINEL_NODE_OPTIONS = [
     {"label": "pNx (Not Assessed)", "value": 4},
 ]
 
-# PMS2 Loss (3 clinical categories)
-# Model uses binary: Normal (0) vs Abnormal (1)
+
 PMS2_OPTIONS = [
     {"label": "Normal", "value": 0},
     {"label": "Abnormal", "value": 1},
@@ -355,10 +311,6 @@ BINARY_OPTIONS = [
     {"label": "No", "value": 0},
     {"label": "Yes", "value": 1},
 ]
-
-# ============================================================================
-# COMPONENT BUILDERS
-# ============================================================================
 
 def create_numeric_input(id_name, label, placeholder, min_val=None, max_val=None, step=1, tooltip=None):
     """Create a numeric input with optional tooltip"""
@@ -388,8 +340,7 @@ def create_numeric_input(id_name, label, placeholder, min_val=None, max_val=None
 
 
 def create_dropdown(id_name, label, options, placeholder="Select...", tooltip=None):
-    """Create a dropdown selector"""
-    # Build label with consistent height
+
     if tooltip:
         label_element = html.Div([
             html.Span(label, style={"marginRight": "4px"}),
@@ -398,8 +349,8 @@ def create_dropdown(id_name, label, options, placeholder="Select...", tooltip=No
         ], className="form-label", style={
             "color": COLORS["text_muted"], 
             "fontSize": "0.85rem",
-            "height": "24px",  # Fixed height
-            "lineHeight": "24px",  # Vertically center content
+            "height": "24px",  
+            "lineHeight": "24px",  
             "display": "flex",
             "alignItems": "center",
             "marginBottom": "8px",
@@ -411,7 +362,7 @@ def create_dropdown(id_name, label, options, placeholder="Select...", tooltip=No
             style={
                 "color": COLORS["text_muted"], 
                 "fontSize": "0.85rem",
-                "height": "24px",  # Same fixed height
+                "height": "24px",  
                 "lineHeight": "24px",
                 "display": "block",
                 "marginBottom": "8px",
@@ -435,13 +386,13 @@ def create_dropdown(id_name, label, options, placeholder="Select...", tooltip=No
     if tooltip:
         components.append(dbc.Tooltip(tooltip, target=f"{id_name}-info", placement="top"))
     
-    # Use md=4 to ensure 3 dropdowns always fit in one row (12 columns / 3 = 4 each)
+   
     return dbc.Col(components, md=4, className="mb-3")
 
 
 def create_binary_toggle(id_name, label, tooltip=None):
     """Create a Yes/No toggle"""
-    # Build label with consistent height to match dropdowns
+   
     if tooltip:
         label_element = html.Div([
             html.Span(label, style={"marginRight": "4px"}),
@@ -450,8 +401,8 @@ def create_binary_toggle(id_name, label, tooltip=None):
         ], className="form-label", style={
             "color": COLORS["text_muted"], 
             "fontSize": "0.85rem",
-            "height": "24px",  # Fixed height to match dropdowns
-            "lineHeight": "24px",  # Vertically center content
+            "height": "24px", 
+            "lineHeight": "24px", 
             "display": "flex",
             "alignItems": "center",
             "marginBottom": "8px",
@@ -463,7 +414,7 @@ def create_binary_toggle(id_name, label, tooltip=None):
             style={
                 "color": COLORS["text_muted"], 
                 "fontSize": "0.85rem",
-                "height": "24px",  # Same fixed height
+                "height": "24px",  
                 "lineHeight": "24px",
                 "display": "block",
                 "marginBottom": "8px",
@@ -487,16 +438,11 @@ def create_binary_toggle(id_name, label, tooltip=None):
     return dbc.Col(components, md=4, className="mb-3")
 
 
-# ============================================================================
-# INPUT SECTIONS
-# ============================================================================
-
 def create_common_inputs():
     """Create common input fields for both models"""
     return html.Div([
         html.H5("📊 Common Features", style=HEADER_STYLE),
-        
-        # Numeric inputs
+      
         html.H6("Numeric Variables", style={"color": COLORS["text"], "marginBottom": "15px", "marginTop": "10px"}),
         dbc.Row([
             create_numeric_input("tumor_size", "Tumor Size", "e.g., 3.5", 0, 30, 0.1, "Tumor diameter in centimeters"),
@@ -504,23 +450,21 @@ def create_common_inputs():
             create_numeric_input("total_sentinel_nodes", "Sentinel Nodes", "e.g., 3", 0, 50, 1, "Total sentinel lymph nodes examined"),
         ]),
         
-        # Tumor characteristics
+    
         html.H6("Tumor Characteristics", style={"color": COLORS["text"], "marginBottom": "15px", "marginTop": "20px"}),
         dbc.Row([
             create_dropdown("tumor_grade_preop", "Preop Tumor Grade", TUMOR_GRADES, tooltip="Grade assessed before surgery"),
             create_dropdown("final_grade", "Final Tumor Grade", TUMOR_GRADES, tooltip="Grade from final pathology"),
             create_dropdown("histology", "Final Histology", HISTOLOGY_OPTIONS, tooltip="Histological subtype"),
         ]),
-        
-        # Risk classification
+       
         html.H6("Risk Classification", style={"color": COLORS["text"], "marginBottom": "15px", "marginTop": "20px"}),
         dbc.Row([
             create_dropdown("preop_risk_group", "Preoperative Risk Group", PREOP_RISK_GROUPS),
             create_dropdown("final_risk_group", "Final Risk Group", FINAL_RISK_GROUPS),
             create_dropdown("preop_staging", "Preoperative Staging", STAGING_OPTIONS),
         ]),
-        
-        # Invasion and pathology
+    
         html.H6("Invasion & Pathology", style={"color": COLORS["text"], "marginBottom": "15px", "marginTop": "20px"}),
         dbc.Row([
             create_dropdown("myometrial_invasion", "Myometrial Invasion", MYOMETRIAL_INVASION_OPTIONS,
@@ -529,7 +473,6 @@ def create_common_inputs():
             create_dropdown("surgery_type", "Primary Surgery Type", SURGERY_TYPE_OPTIONS),
         ], className="align-items-stretch", style={"marginBottom": "1rem"}),
         
-        # Binary features
         html.H6("Clinical Factors", style={"color": COLORS["text"], "marginBottom": "15px", "marginTop": "20px"}),
         dbc.Row([
             create_binary_toggle("distant_metastasis", "Distant Metastasis", "Presence of distant metastatic disease"),
@@ -599,9 +542,6 @@ def create_prediction_controls():
     ], style=CARD_STYLE)
 
 
-# ============================================================================
-# HEADER AND LAYOUT
-# ============================================================================
 
 def create_header():
     """Create app header"""
@@ -637,15 +577,10 @@ def create_results_section():
     return html.Div(id="results-content")
 
 
-# ============================================================================
-# MAIN LAYOUT
-# ============================================================================
-
 app.layout = html.Div([
-    # Store to track if results should be shown
+    
     dcc.Store(id="results-visible-store", data=False),
     
-    # Error modal for validation messages
     dbc.Modal([
         dbc.ModalHeader(dbc.ModalTitle([
             html.I(className="bi bi-exclamation-triangle-fill me-2", style={"color": "#dc2626"}),
@@ -656,8 +591,7 @@ app.layout = html.Div([
             dbc.Button("OK", id="close-error-modal", className="ms-auto", color="primary")
         ),
     ], id="error-modal", is_open=False, centered=True),
-    
-    # Ethical considerations modal
+
     dbc.Modal([
         dbc.ModalHeader(dbc.ModalTitle([
             html.I(className="bi bi-shield-lock-fill me-2", style={"color": COLORS["accent"]}),
@@ -758,16 +692,15 @@ app.layout = html.Div([
     
     dbc.Container([
         dbc.Row([
-            # Input Column - dynamically sized based on results visibility
+            
             dbc.Col([
                 create_prediction_controls(),
                 create_common_inputs(),
                 
-                # Model-specific inputs (shown/hidden based on selection)
+                
                 html.Div(id="os-inputs-container", children=[create_os_specific_inputs()]),
                 html.Div(id="rfs-inputs-container", children=[create_rfs_specific_inputs()]),
-                
-                # Calculate button
+        
                 html.Div([
                     dbc.Button(
                         "Calculate Survival Probability",
@@ -786,13 +719,13 @@ app.layout = html.Div([
                 
             ], id="input-column", lg=8, md=10, className="mx-auto"),
             
-            # Results Column - hidden initially
+            
             dbc.Col([
                 create_results_section(),
             ], id="results-column", lg=7, md=12, style={"display": "none"}),
         ], id="main-content-row", justify="center"),
         
-        # Footer
+
         html.Div([
             html.Hr(style={"borderColor": COLORS["border"]}),
             html.Div([
@@ -818,10 +751,6 @@ app.layout = html.Div([
 ], style={"backgroundColor": COLORS["background"], "minHeight": "100vh", "paddingBottom": "40px"})
 
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
 def get_risk_category(risk_score, quantiles):
     """Determine risk category based on quantiles"""
     if risk_score <= quantiles['low']:
@@ -836,7 +765,7 @@ def prepare_os_features(inputs):
     """Prepare feature vector for OS model"""
     features = {}
     
-    # Map inputs to model features
+   
     features['tumor_size'] = inputs.get('tumor_size', OS_MEDIANS.get('tumor_size', 3.0))
     features['bmi'] = inputs.get('bmi', OS_MEDIANS.get('bmi', 28))
     features['total_sentinel_nodes'] = inputs.get('total_sentinel_nodes', OS_MEDIANS.get('total_sentinel_nodes', 2))
@@ -845,35 +774,27 @@ def prepare_os_features(inputs):
     features['final_grade_encoded'] = inputs.get('final_grade', 2)
     features['preoperative_risk_group_encoded'] = inputs.get('preop_risk_group', 2)
     features['final_risk_group_encoded'] = inputs.get('final_risk_group', 2)
-    
-    # Binary mappings
+
     features['distant_metastasis'] = inputs.get('distant_metastasis', 0)
     features['chemotherapy'] = inputs.get('chemotherapy', 0)
     
-    # PMS2: UI has 3 options (0=Normal, 1=Abnormal, 2=Not performed)
-    # Model uses binary: 1 if Abnormal, 0 otherwise
     pms2_val = inputs.get('pms2', 0)
     features['pms2'] = 1 if pms2_val == 1 else 0
     
-    # One-hot encoded features
-    # Only 'serous' has a dedicated model feature; all others use baseline (0)
     histology = inputs.get('histology', 'endometrioid')
     features['final_histology_2.0'] = 1 if histology == 'serous' else 0
     
     features['primary_surgery_type_1.0'] = inputs.get('surgery_type', 0)
     
-    # Preop Staging: UI has 3 stages (1=Stage I, 2=Stage II, 3=Stage III-IV)
-    # OS model uses binary: preoperative_staging_2.0 = 1 if Stage II or higher
+    
     preop_stage = inputs.get('preop_staging', 1)
     features['preoperative_staging_2.0'] = 1 if preop_stage >= 2 else 0
     
-    # Sentinel Node: UI has 5 options (0-4), model uses binary for Macrometastasis
-    # sentinel_node_pathology_4.0 = 1 if Macrometastasis (value=3)
+   
     sentinel_val = inputs.get('sentinel_node_status', 0)
     features['sentinel_node_pathology_4.0'] = 1 if sentinel_val == 3 else 0
     
-    # Myometrial Invasion: Use single input for both subjective and objective features
-    # UI has 4 options (0-3), model uses binary for deep invasion (value=2 means >50%)
+  
     myom_inv = inputs.get('myometrial_invasion', 0)
     features['myometrial_invasion_preop_subjective_2.0'] = 1 if myom_inv == 2 else 0
     features['myometrial_invasion_preop_objective_4.0'] = 1 if myom_inv == 2 else 0
@@ -903,32 +824,27 @@ def prepare_rfs_features(inputs):
     features['lymphovascular_invasion'] = inputs.get('lymphovascular_invasion', 0)
     features['indication_radiotherapy'] = inputs.get('indication_radiotherapy', 0)
     
-    # Myometrial Invasion: Use single input for all myometrial invasion features
-    # UI has 4 options (0=N/A, 1=<50%, 2=>50%, 3=Not assessable)
+  
     myom_inv = inputs.get('myometrial_invasion', 0)
     features['myometrial_invasion_encoded'] = 1 if myom_inv == 2 else 0
     
     # One-hot encoded features
-    # Only 'serous' and 'carcinosarcoma' have dedicated model features; all others use baseline (0)
     histology = inputs.get('histology', 'endometrioid')
     features['final_histology_2.0'] = 1 if histology == 'serous' else 0
     features['final_histology_9.0'] = 1 if histology == 'carcinosarcoma' else 0
     
     features['primary_surgery_type_1.0'] = inputs.get('surgery_type', 0)
     
-    # Preop Staging: UI has 3 stages (1=Stage I, 2=Stage II, 3=Stage III-IV)
-    # RFS model uses two binary features:
-    # - preoperative_staging_1.0 = 1 if Stage I, 0 otherwise
-    # - preoperative_staging_2.0 = 1 if Stage II or higher, 0 otherwise
+  
     preop_stage = inputs.get('preop_staging', 1)
-    features['preoperative_staging_1.0'] = 1 if preop_stage == 1 else 0  # Stage I indicator
-    features['preoperative_staging_2.0'] = 1 if preop_stage >= 2 else 0  # Stage II+ indicator
+    features['preoperative_staging_1.0'] = 1 if preop_stage == 1 else 0  
+    features['preoperative_staging_2.0'] = 1 if preop_stage >= 2 else 0  
     
-    # Sentinel Node: UI has 5 options (0-4), model uses binary for Macrometastasis
+   
     sentinel_val = inputs.get('sentinel_node_status', 0)
     features['sentinel_node_pathology_4.0'] = 1 if sentinel_val == 3 else 0
     
-    # Myometrial Invasion Subjective: Use single input (already set above)
+   
     features['myometrial_invasion_preop_subjective_2.0'] = 1 if myom_inv == 2 else 0
     
     return features
@@ -939,31 +855,29 @@ def create_feature_contribution_chart(model, features_dict, model_name):
     if model is None:
         return go.Figure()
     
-    # Get coefficients (pandas Series)
+ 
     coefs = model.model.params_
     feature_names = model.feature_names
     
     # Calculate contributions: β * x
     contributions = []
     for feat in feature_names:
-        # Access coefficient - use .loc for pandas Series to ensure correct access
         try:
             coef = coefs.loc[feat] if feat in coefs.index else 0.0
         except (KeyError, IndexError):
             coef = 0.0
         
-        # Get feature value from dict, handling None and missing values
+
         value = features_dict.get(feat)
         if value is None:
             value = 0.0
         else:
-            # Ensure value is numeric
+            
             try:
                 value = float(value)
             except (ValueError, TypeError):
                 value = 0.0
         
-        # Calculate contribution: β * x
         contrib = coef * value
         
         contributions.append({
@@ -975,8 +889,7 @@ def create_feature_contribution_chart(model, features_dict, model_name):
     
     # Sort by absolute contribution
     contributions = sorted(contributions, key=lambda x: abs(x['contribution']), reverse=True)[:10]
-    
-    # Create chart
+
     fig = go.Figure()
     
     colors = [COLORS["high_risk"] if c['contribution'] > 0 else COLORS["low_risk"] for c in contributions]
@@ -999,16 +912,12 @@ def create_feature_contribution_chart(model, features_dict, model_name):
         margin=dict(l=20, r=20, t=50, b=40),
         height=350,
     )
-    
-    # Add reference line at 0
+
     fig.add_vline(x=0, line_dash="dash", line_color=COLORS["text_muted"])
     
     return fig
 
 
-# ============================================================================
-# CALLBACKS
-# ============================================================================
 
 @callback(
     [Output("os-inputs-container", "style"),
@@ -1021,7 +930,7 @@ def toggle_model_inputs(model_selection):
         return {"display": "block"}, {"display": "none"}
     elif model_selection == "rfs":
         return {"display": "none"}, {"display": "block"}
-    else:  # both
+    else:
         return {"display": "block"}, {"display": "block"}
 
 
@@ -1046,7 +955,6 @@ def close_error_modal(n_clicks, is_open):
 )
 def toggle_ethics_modal(open_clicks, close_clicks, is_open):
     """Toggle the ethics modal"""
-    # If either button was clicked, toggle the modal state
     if open_clicks or close_clicks:
         return not is_open
     return is_open
@@ -1098,9 +1006,7 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
                           indication_radiotherapy, surgery_time):
     """Main prediction callback"""
     
-    # =========================================================================
-    # VALIDATION - Check required fields
-    # =========================================================================
+  
     required_fields = {
         'Preop Tumor Grade': tumor_grade_preop,
         'Final Tumor Grade': final_grade,
@@ -1111,7 +1017,7 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
     missing_fields = [name for name, value in required_fields.items() if value is None]
     
     if missing_fields:
-        # Show error popup modal - don't change the layout
+        
         error_body = html.Div([
             html.P([
                 "Please fill in the following required fields before calculating:"
@@ -1126,13 +1032,13 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
         ])
         
         return (
-            dash.no_update,  # Don't change results column style
-            dash.no_update,  # Don't change input column lg
-            dash.no_update,  # Don't change input column md
-            dash.no_update,  # Don't change className
-            dash.no_update,  # Don't change results content
-            True,            # Open the error modal
-            error_body,      # Modal body content
+            dash.no_update,  
+            dash.no_update,  
+            dash.no_update,  
+            dash.no_update, 
+            dash.no_update,  
+            True,           
+            error_body,    
         )
     
     # Default prediction years
@@ -1162,42 +1068,37 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
         'surgery_time': surgery_time,
     }
     
-    # Track imputed values
+
     imputed_features = []
     alerts = []
     
-    # Check model availability
+    
     if not MODELS_LOADED:
         alerts.append(dbc.Alert([
             html.I(className="bi bi-exclamation-triangle me-2"),
             "Models not loaded. Showing placeholder predictions."
         ], color="warning"))
     
-    # Initialize results
     os_results = None
     rfs_results = None
     
-    # =========================================================================
-    # OS PREDICTIONS
-    # =========================================================================
+    
     if model_selection in ["os", "both"] and os_model is not None:
         os_features = prepare_os_features(inputs)
         
-        # Check for imputed values
+  
         for feat, val in os_features.items():
             if inputs.get(feat.replace('_encoded', '').replace('_2.0', '').replace('_4.0', '').replace('_1.0', '')) is None:
                 if feat in ['tumor_size', 'bmi', 'total_sentinel_nodes']:
                     imputed_features.append(FEATURE_LABELS.get(feat, feat))
         
-        # Create DataFrame for prediction
-        os_df = pd.DataFrame([os_features])
-        os_df = os_df[os_model.feature_names]  # Ensure correct column order
         
-        # Calculate risk score (using model method to ensure scaling is applied)
+        os_df = pd.DataFrame([os_features])
+        os_df = os_df[os_model.feature_names]  
         os_risk_score = os_model.predict_risk(os_df)[0]
         os_risk_cat, os_risk_color = get_risk_category(os_risk_score, OS_RISK_QUANTILES)
         
-        # Calculate survival function (using model method to ensure scaling is applied)
+       
         os_surv_func = os_model.predict_survival_function(os_df)
         
         os_results = {
@@ -1209,23 +1110,20 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
             'probabilities': {}
         }
         
-        # Get survival probabilities at selected years
-        # CRITICAL: Training data uses DAYS, so convert years to days
+        
         for year in prediction_years:
             days = year * 365  # Convert years to days
             times = os_surv_func.index.values
             closest_idx = np.argmin(np.abs(times - days))
             os_results['probabilities'][year] = os_surv_func.iloc[closest_idx, 0]
     
-    # =========================================================================
-    # RFS PREDICTIONS
-    # =========================================================================
+   
     if model_selection in ["rfs", "both"] and rfs_model is not None:
         rfs_features = prepare_rfs_features(inputs)
         
-        # Create DataFrame for prediction
+        
         rfs_df = pd.DataFrame([rfs_features])
-        rfs_df = rfs_df[rfs_model.feature_names]  # Ensure correct column order
+        rfs_df = rfs_df[rfs_model.feature_names]  
         
         # Calculate risk score (using model method to ensure scaling is applied)
         rfs_risk_score = rfs_model.predict_risk(rfs_df)[0]
@@ -1244,25 +1142,22 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
         }
         
         # Get survival probabilities at selected years
-        # CRITICAL: Training data uses DAYS, so convert years to days
+        
         for year in prediction_years:
             days = year * 365  # Convert years to days
             times = rfs_surv_func.index.values
             closest_idx = np.argmin(np.abs(times - days))
             rfs_results['probabilities'][year] = rfs_surv_func.iloc[closest_idx, 0]
     
-    # =========================================================================
-    # BUILD OUTPUTS
-    # =========================================================================
+ 
     
-    # Imputation alert
+
     if imputed_features:
         alerts.append(dbc.Alert([
             html.I(className="bi bi-info-circle me-2"),
             f"Missing values imputed with training medians: {', '.join(imputed_features)}"
         ], color="info", className="py-2"))
-    
-    # Risk summary cards
+
     risk_cards = []
     if os_results:
         risk_cards.append(
@@ -1314,21 +1209,18 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
     
     risk_cards_row = dbc.Row(risk_cards, className="mb-3") if risk_cards else html.Div()
     
-    # =========================================================================
-    # SURVIVAL CURVE
-    # =========================================================================
+   
     fig = go.Figure()
     
     max_years = max(prediction_years) + 1
-    max_days = max_years * 365  # Convert to days for filtering
-    
+    max_days = max_years * 365  
     if os_results:
         surv_func = os_results['survival_function']
         times_days = surv_func.index.values
         times_years = times_days / 365  # Convert days to years for display
         probs = surv_func.values.flatten()
         
-        # Filter to max time
+      
         mask = times_days <= max_days
         
         fig.add_trace(go.Scatter(
@@ -1339,7 +1231,7 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
             line=dict(color=COLORS["accent"], width=3),
         ))
         
-        # Add markers at prediction years
+      
         fig.add_trace(go.Scatter(
             x=list(os_results['probabilities'].keys()),
             y=list(os_results['probabilities'].values()),
@@ -1386,9 +1278,7 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
         margin=dict(l=60, r=20, t=80, b=50),
     )
     
-    # =========================================================================
-    # SURVIVAL TABLE
-    # =========================================================================
+    
     table_rows = [html.Tr([
         html.Th("Year"),
         *([html.Th("OS Probability")] if os_results else []),
@@ -1410,10 +1300,7 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
         dbc.Table([html.Tbody(table_rows)], bordered=True, hover=True, size="sm",
                   style={"backgroundColor": COLORS["card"]}),
     ])
-    
-    # =========================================================================
-    # FEATURE CONTRIBUTIONS CHART
-    # =========================================================================
+   
     if os_results and model_selection in ["os", "both"]:
         contrib_fig = create_feature_contribution_chart(os_model, os_results['features'], "OS")
     elif rfs_results:
@@ -1421,27 +1308,22 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
     else:
         contrib_fig = go.Figure()
     
-    # =========================================================================
-    # BUILD FULL RESULTS CONTENT
-    # =========================================================================
+   
     results_content = html.Div([
         html.H4("📈 Prediction Results", style=HEADER_STYLE),
         
-        # Warnings/alerts container
+      
         html.Div(alerts),
-        
-        # Risk summary cards
+
         risk_cards_row,
         
-        # Survival curve
         html.Div([
             dcc.Graph(figure=fig, config={"displayModeBar": False}, style={"height": "400px"}),
         ]),
         
-        # Survival probabilities table
+        
         survival_table,
         
-        # Feature contributions
         html.Div([
             html.Div([
                 html.H5("Feature Contributions", style={"color": COLORS["text"], "marginTop": "20px", "marginBottom": "5px"}),
@@ -1461,19 +1343,15 @@ def calculate_predictions(n_clicks, model_selection, prediction_years,
     ], style=CARD_STYLE)
     
     return (
-        {"display": "block"},  # Show results column
-        5,   # Input column lg size
-        12,  # Input column md size
-        "",  # Remove mx-auto centering
-        results_content,  # Full results content
-        False,  # Keep modal closed
-        "",     # Empty modal body
+        {"display": "block"},  
+        5,  
+        12,  
+        "",  
+        results_content, 
+        False,  
+        "",     
     )
 
-
-# ============================================================================
-# RUN SERVER
-# ============================================================================
 
 if __name__ == "__main__":
     app.run(debug=True, port=8051)

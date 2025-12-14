@@ -1,10 +1,3 @@
-"""
-Preprocessing Module
-====================
-
-Data cleaning and feature engineering for survival analysis.
-"""
-
 import pandas as pd
 import numpy as np
 from typing import List, Optional, Tuple
@@ -12,10 +5,6 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 
 class DataPreprocessor:
-    """
-    Preprocessor for endometrial cancer survival data.
-    """
-    
     def __init__(self):
         self.scalers = {}
         self.encoders = {}
