@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""
-Check what balanced files actually exist
-Run this after the SMOTE script to see what was created
-"""
 
 import pandas as pd
 from pathlib import Path
@@ -20,7 +16,7 @@ if not output_dir.exists():
 
 print(f"\nChecking directory: {output_dir.absolute()}\n")
 
-# Expected files
+
 expected_files = [
     'recurrence_free_survival_SMOTE_balanced.csv',
     'overall_survival_SMOTE_balanced.csv',
@@ -87,7 +83,7 @@ if found_csvs:
         except Exception as e:
             print(f"  ✗ Error reading file: {e}")
 
-# Summary
+
 print("\n" + "="*70)
 print("SUMMARY")
 print("="*70)

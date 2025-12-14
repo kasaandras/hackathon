@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-MINIMAL SMOTE BALANCING - NO FRILLS, JUST RESULTS
-Gets you balanced CSV files with maximum clarity on any errors
-"""
+
 
 import pandas as pd
 import numpy as np
@@ -12,7 +9,7 @@ print("="*70)
 print("MINIMAL SMOTE BALANCING - BULLETPROOF VERSION")
 print("="*70)
 
-# Configuration
+
 INPUT_DIR = Path("survival_preprocessing_output")
 OUTPUT_DIR = Path("balanced_survival_output")
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -20,7 +17,6 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 print(f"\nInput:  {INPUT_DIR}")
 print(f"Output: {OUTPUT_DIR}")
 
-# Check SMOTE availability
 print("\n[1/5] Checking dependencies...")
 try:
     from imblearn.over_sampling import SMOTE
@@ -30,7 +26,7 @@ except ImportError as e:
     print("  → Install with: pip install imbalanced-learn")
     exit(1)
 
-# Define datasets
+
 datasets = {
     'recurrence_free_survival': {
         'file': 'recurrence_free_survival_cleaned_survival_data.csv',
@@ -107,7 +103,7 @@ for name, config in datasets.items():
     try:
         # Check if we have enough samples
         if n_events < 6:
-            print(f"  ⚠️  Only {n_events} events - too few for SMOTE (need ≥6)")
+            print(f"   Only {n_events} events - too few for SMOTE (need ≥6)")
             print(f"  Skipping SMOTE for this dataset")
             continue
         
@@ -131,7 +127,7 @@ for name, config in datasets.items():
         print(f"  ✓ SMOTE completed")
         print(f"  ✓ Created {n_synthetic} synthetic samples")
         
-        # Show after stats
+    
         n_events_after = (y_balanced == 1).sum()
         n_censored_after = (y_balanced == 0).sum()
         print(f"\n  AFTER SMOTE:")

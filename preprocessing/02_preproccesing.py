@@ -1,29 +1,4 @@
 #!/usr/bin/env python3
-"""
-Survival Analysis Preprocessing Pipeline for Endometrial Cancer Dataset
-NSMP (No Specific Molecular Profile) Endometrial Cancer Challenge
-
-Creates proper survival outcomes for the challenge requirements:
-1. Recurrence-free survival (time to first recurrence)
-2. Overall survival (time to death from any cause)
-
-Provides comprehensive survival analysis including:
-- Time-to-event outcome creation
-- Top 20 feature selection for each survival endpoint
-- Cox proportional hazards baseline models
-- Cleaned survival datasets ready for advanced modeling
-
-Challenge Requirements:
-- Recurrence-free survival analysis
-- Overall survival analysis
-- Time-to-event modeling
-
-Requirements:
-pip install pandas numpy scikit-learn matplotlib seaborn lifelines
-
-Author: Survival Analysis Preprocessing Pipeline
-Date: December 2025
-"""
 
 import pandas as pd
 import numpy as np
@@ -36,7 +11,6 @@ import warnings
 from pathlib import Path
 from datetime import datetime
 
-# Survival analysis libraries
 try:
     from lifelines import CoxPHFitter, KaplanMeierFitter
     from lifelines.utils import concordance_index
@@ -56,13 +30,12 @@ class EndometrialCancerPreprocessor:
         self.target_features = {}
         self.models = {}
         self.scalers = {}
-        
-        # Create output directory
+
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         print(f"Output directory: {self.output_dir.absolute()}")
         
-        # Variable mapping
+    
         self.variable_mapping = {
             'codigo_participante': 'patient_code',
             'edad': 'age_at_diagnosis',
@@ -120,7 +93,7 @@ class EndometrialCancerPreprocessor:
             self.df = pd.read_excel(self.excel_path)
             print(f"✓ Data loaded: {self.df.shape[0]} patients, {self.df.shape[1]} variables")
             
-            # Apply variable mapping
+           
             self.df_english = self.df.copy()
             available_mappings = {k: v for k, v in self.variable_mapping.items() if k in self.df.columns}
             self.df_english = self.df_english.rename(columns=available_mappings)
@@ -174,10 +147,10 @@ class EndometrialCancerPreprocessor:
                 print(f"  Processing {english_name} ({spanish_name})...")
                 
                 if spanish_name in ['f_diag', 'Ultima_fecha']:
-                    # Already datetime format
+                
                     self.df_english[english_name] = pd.to_datetime(self.df_english[spanish_name], errors='coerce')
                 else:
-                    # Object format - likely DD/MM/YYYY, need to parse
+                   
                     self.df_english[english_name] = pd.to_datetime(self.df_english[spanish_name], 
                                                                   format='%d/%m/%Y', errors='coerce')
         
@@ -193,7 +166,7 @@ class EndometrialCancerPreprocessor:
         """Create recurrence-free survival time and event variables."""
         print("  Creating recurrence-free survival...")
         
-        # Initialize survival variables
+      
         self.df_english['rfs_time'] = np.nan
         self.df_english['rfs_event'] = 0
         
@@ -206,21 +179,21 @@ class EndometrialCancerPreprocessor:
             if pd.isna(diagnosis_date):
                 continue
                 
-            # If patient had recurrence and we have recurrence date
+            
             if recurrence_status > 0 and not pd.isna(recurrence_date):
                 time_to_event = (recurrence_date - diagnosis_date).days
                 if time_to_event > 0:  # Valid time
                     self.df_english.at[idx, 'rfs_time'] = time_to_event
                     self.df_english.at[idx, 'rfs_event'] = 1
             
-            # If no recurrence or no recurrence date, use last follow-up (censored)
+        
             elif not pd.isna(last_followup):
                 time_to_censoring = (last_followup - diagnosis_date).days
                 if time_to_censoring > 0:  # Valid time
                     self.df_english.at[idx, 'rfs_time'] = time_to_censoring
                     self.df_english.at[idx, 'rfs_event'] = 0
         
-        # Remove invalid survival times
+       
         valid_rfs = self.df_english['rfs_time'].notna() & (self.df_english['rfs_time'] > 0)
         
         print(f"    ✓ RFS created for {valid_rfs.sum()}/{len(self.df_english)} patients")
@@ -231,7 +204,7 @@ class EndometrialCancerPreprocessor:
         """Create overall survival time and event variables."""
         print("  Creating overall survival...")
         
-        # Initialize survival variables
+        
         self.df_english['os_time'] = np.nan
         self.df_english['os_event'] = 0
         
@@ -240,7 +213,7 @@ class EndometrialCancerPreprocessor:
             death_date = row.get('death_date', pd.NaT)
             last_followup = row.get('last_followup_date', pd.NaT)
             
-            # Determine if patient died (check multiple sources)
+           
             died = False
             if not pd.isna(death_date):
                 died = True
@@ -249,22 +222,20 @@ class EndometrialCancerPreprocessor:
                 
             if pd.isna(diagnosis_date):
                 continue
-                
-            # If patient died and we have death date
+            
             if died and not pd.isna(death_date):
                 time_to_event = (death_date - diagnosis_date).days
-                if time_to_event > 0:  # Valid time
+                if time_to_event > 0:  
                     self.df_english.at[idx, 'os_time'] = time_to_event
                     self.df_english.at[idx, 'os_event'] = 1
             
-            # If alive or no death date, use last follow-up (censored)
+         
             elif not pd.isna(last_followup):
                 time_to_censoring = (last_followup - diagnosis_date).days
-                if time_to_censoring > 0:  # Valid time
+                if time_to_censoring > 0:  
                     self.df_english.at[idx, 'os_time'] = time_to_censoring
                     self.df_english.at[idx, 'os_event'] = 0
         
-        # Remove invalid survival times
         valid_os = self.df_english['os_time'].notna() & (self.df_english['os_time'] > 0)
         
         print(f"    ✓ OS created for {valid_os.sum()}/{len(self.df_english)} patients")
@@ -289,7 +260,7 @@ class EndometrialCancerPreprocessor:
             print(f"✗ Survival variables {time_col}/{event_col} not found")
             return []
         
-        # Get survival data (remove missing values)
+       
         survival_mask = (self.df_english[time_col].notna() & 
                         self.df_english[event_col].notna() &
                         (self.df_english[time_col] > 0))
@@ -349,7 +320,7 @@ class EndometrialCancerPreprocessor:
                     le = LabelEncoder()
                     feature_encoded = le.fit_transform(feature_data[common_idx])
                     
-                    # Correlations with encoded variable
+                   
                     time_corr, time_p = spearmanr(feature_encoded, 
                                                  survival_data.loc[common_idx, time_col])
                     event_corr, event_p = spearmanr(feature_encoded, 
@@ -374,8 +345,7 @@ class EndometrialCancerPreprocessor:
         # Sort by association strength and get top k
         feature_associations.sort(key=lambda x: x['association_score'], reverse=True)
         top_features = feature_associations[:k]
-        
-        # Store results
+    
         self.target_features[outcome_type] = top_features
         
         print(f"✓ Top {len(top_features)} features for {outcome_type}:")
@@ -395,8 +365,7 @@ class EndometrialCancerPreprocessor:
         
         # Get selected features
         selected_features = [f['feature'] for f in self.target_features[outcome_type]]
-        
-        # Determine survival columns
+    
         if outcome_type == 'recurrence_free_survival':
             time_col = 'rfs_time'
             event_col = 'rfs_event'
@@ -424,7 +393,7 @@ class EndometrialCancerPreprocessor:
             if survival_data[col].isnull().any():
                 survival_data[col].fillna(survival_data[col].median(), inplace=True)
         
-        # Encode categorical features
+  
         categorical_cols = survival_data.select_dtypes(include=['object']).columns.tolist()
         for col in categorical_cols:
             if survival_data[col].isnull().any():
@@ -433,13 +402,12 @@ class EndometrialCancerPreprocessor:
             le = LabelEncoder()
             survival_data[col] = le.fit_transform(survival_data[col])
         
-        # Split features and survival outcome
+        
         X = survival_data.drop([time_col, event_col], axis=1)
         survival_outcome = survival_data[[time_col, event_col]]
         
         print(f"✓ Prepared survival data for {outcome_type}: {X.shape[0]} samples, {X.shape[1]} features")
-        
-        # Save cleaned survival dataset
+     
         survival_data.to_csv(self.output_dir / f'{outcome_type}_cleaned_survival_data.csv', index=False)
         
         return X, survival_outcome, selected_features, survival_data
@@ -533,12 +501,11 @@ class EndometrialCancerPreprocessor:
             return
         
         # Get top features data
-        features_data = self.target_features[outcome_type][:15]  # Top 15 for visualization
+        features_data = self.target_features[outcome_type][:15] 
         
         features = [f['feature'] for f in features_data]
         association_scores = [f['association_score'] for f in features_data]
-        
-        # Create plot
+  
         plt.figure(figsize=(12, 8))
         y_pos = np.arange(len(features))
         
@@ -548,7 +515,7 @@ class EndometrialCancerPreprocessor:
         plt.title(f'Top 15 Features for {outcome_type.replace("_", " ").title()}')
         plt.grid(axis='x', alpha=0.3)
         
-        # Add association scores on bars
+ 
         for i, v in enumerate(association_scores):
             plt.text(v + max(association_scores) * 0.01, i, f'{v:.3f}', va='center')
         
@@ -562,7 +529,7 @@ class EndometrialCancerPreprocessor:
         """Save survival analysis preprocessing results to files."""
         print(f"\nSaving survival analysis results to {self.output_dir}...")
         
-        # Save feature selection results
+        
         with open(self.output_dir / 'survival_analysis_results.txt', 'w', encoding='utf-8') as f:
             f.write("ENDOMETRIAL CANCER - SURVIVAL ANALYSIS FEATURE SELECTION\n")
             f.write("=" * 60 + "\n\n")
@@ -585,7 +552,7 @@ class EndometrialCancerPreprocessor:
             else:
                 f.write("No features selected - check survival outcome creation.\n\n")
             
-            # Add model performance summary if models exist
+           
             if hasattr(self, 'models') and self.models:
                 f.write("BASELINE COX REGRESSION PERFORMANCE:\n")
                 f.write("-" * 40 + "\n")
@@ -595,7 +562,7 @@ class EndometrialCancerPreprocessor:
                         f.write(f"  C-index (train): {model_info['c_index_train']:.3f}\n")
                         f.write(f"  C-index (test):  {model_info['c_index_test']:.3f}\n")
                         
-                        # Handle event column naming correctly
+                       
                         if outcome == 'recurrence_free_survival':
                             event_col = 'rfs_event'
                         elif outcome == 'overall_survival':
@@ -608,7 +575,6 @@ class EndometrialCancerPreprocessor:
                             f.write(f"  Testing events:  {model_info['test_data'][event_col].sum()}\n")
                         f.write("\n")
         
-        # Save selected features as CSV for easy import if they exist
         if hasattr(self, 'target_features') and self.target_features:
             for outcome, features_data in self.target_features.items():
                 features_df = pd.DataFrame(features_data)
@@ -621,18 +587,16 @@ class EndometrialCancerPreprocessor:
         print("ENDOMETRIAL CANCER - SURVIVAL ANALYSIS PREPROCESSING")
         print("=" * 60)
         
-        # Load data
+   
         if not self.load_and_prepare_data():
             return False
         
-        # Create survival outcomes
         if not self.create_survival_outcomes():
             return False
         
-        # Identify usable features
+
         numeric_features, categorical_features = self.identify_usable_features()
-        
-        # Define survival outcomes for the challenge
+      
         survival_outcomes = ['recurrence_free_survival', 'overall_survival']
         
         print(f"\nSurvival outcomes for analysis: {survival_outcomes}")
@@ -652,7 +616,7 @@ class EndometrialCancerPreprocessor:
             # Create visualization
             self.create_survival_feature_importance_plot(outcome)
         
-        # Save results
+   
         self.save_survival_results()
         
         print(f"\n{'='*70}")
@@ -664,11 +628,9 @@ class EndometrialCancerPreprocessor:
         print("  - [outcome]_feature_importance.png (for each outcome)")
         print("  - [outcome]_cleaned_survival_data.csv (ready for modeling)")
         print("\nCox regression baseline models trained and evaluated.")
-        print("Ready for advanced survival modeling by your team!")
-        
+   
         return True
 
-# Main execution
 if __name__ == "__main__":
     print("ENDOMETRIAL CANCER SURVIVAL ANALYSIS PREPROCESSING")
     print("=" * 60)
@@ -678,13 +640,12 @@ if __name__ == "__main__":
     print("  3. Time-to-event modeling with Cox regression")
     print("=" * 60)
     
-    # CHANGE THIS PATH TO MATCH YOUR EXCEL FILE LOCATION
+  
     excel_file_path = "IQ_Cancer_Endometrio_merged_NMSP.xlsx"
     
-    # Create output directory
+   
     output_directory = "survival_preprocessing_output"
     
-    # Initialize and run survival preprocessor
     preprocessor = EndometrialCancerPreprocessor(excel_file_path, output_directory)
     success = preprocessor.run_survival_preprocessing_pipeline()
     
@@ -696,11 +657,6 @@ if __name__ == "__main__":
         print("  ✅ Top 20 features identified for each survival endpoint")
         print("  ✅ Cox regression baseline models trained")
         print("  ✅ Cleaned survival datasets ready for advanced modeling")
-        print("\n🎯 NEXT STEPS FOR ADVANCED MODELING:")
-        print("  • Random Survival Forests")
-        print("  • Deep survival networks")
-        print("  • Ensemble survival methods")
-        print("  • Time-dependent AUC optimization")
     else:
         print("\n✗ Survival preprocessing failed. Check error messages above.")
         print("\n💡 TROUBLESHOOTING:")

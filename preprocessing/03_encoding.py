@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""
-Utility script to apply one-hot encoding to selected columns.
-
-Example:
-    python 03_encoding.py \
-        --input preprocessing_output/disease_free_cleaned_data.csv \
-        --columns figo_stage_2023 preoperative_staging preoperative_risk_group
-"""
 
 from __future__ import annotations
 
@@ -18,7 +10,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-# Columns that behave like categorical factors in the cleaned disease_free dataset.
+
 DEFAULT_CATEGORICAL_COLUMNS = [
     "estadificacion_",
     "figo_stage_2023",
