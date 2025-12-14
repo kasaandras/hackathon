@@ -4,11 +4,11 @@
 
 - [x] Create data loading and EDA notebook/script to explore the Excel data
 
-- [ ] Create preprocessing module for data cleaning and feature engineering
+- [x] Create preprocessing module for data cleaning and feature engineering
 
-- [ ] Create modeling module with Cox PH and logistic regression
+- [x] Create modeling module with Cox PH 
 
-- [ ] Create validation module for cross-validation and metrics
+- [x] Create validation module for cross-validation and metrics
 
 - [x] Create app for the risk calculator
 
